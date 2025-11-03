@@ -1,0 +1,6 @@
+# Dependencias del proyecto
+pyautocad>=0.2.0
+PyYAML>=6.0
+
+# Dependencias opcionales para tests
+colorama>=0.4.6  # Colores en terminal para run_all_tests.py

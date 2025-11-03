@@ -1,0 +1,22 @@
+# Configuración para optimización de rutas de fibra en AutoCAD
+# Unidades en metros
+reserva_minima: 10
+
+# Capas de cables
+capas_cables:
+  # Cables de distribución
+  xbox_hub:
+    tipo: "MPO 12H"
+    longitudes: [300]
+  # Cables principales
+  hub_fat:
+    tipo: "2H"
+    longitudes: [200, 150, 100]
+  # Cables de expansión
+  expansion:
+    tipo: "1H"
+    longitudes: [100, 50]
+
+# Criterios para identificar objetos en capas específicas
+criterios_capa:
+  - "CABLE"
