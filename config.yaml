@@ -25,14 +25,9 @@ capas_cables:
     longitudes: [300]
     reserva_minima: 15
   # Cables principales
-  hub_fat:
+  distribucion:
     tipo: "2H"
     longitudes: [200, 150, 100]
-    reserva_minima: 10
-  # Cables de expansión
-  expansion:
-    tipo: "1H"
-    longitudes: [100, 50]
     reserva_minima: 10
 
 # Criterios para identificar objetos en capas específicas
