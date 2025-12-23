@@ -1,7 +1,6 @@
 """
 Registra eventos y errores en un archivo de log
 """
-
 import datetime
 import os
 

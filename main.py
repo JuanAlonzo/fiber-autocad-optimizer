@@ -1,11 +1,14 @@
 """
 Optimizador de Fibra Óptica para AutoCAD - Punto de Entrada Principal
 """
-from optimizer import acad, asignar_cables, exportar_csv, obtener_tramos
+from optimizer import get_acad_instance, asignar_cables, exportar_csv, obtener_tramos
 
 
 if __name__ == "__main__":
     print("=== OPTIMIZADOR DE CABLEADO FIBRA AUTOCAD ===")
+
+    print("Conectando con AutoCAD...")
+    acad = get_acad_instance()
     print("1️.- Desde XBOX → HUB BOX (preco 300m)")
     print("2️.- Desde HUB BOX → FATS (200 / 150 / 100)")
     print("3️.- FATS EXPANSIÓN (100 / 50)")

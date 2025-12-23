@@ -1,29 +1,31 @@
 """
 Lógica de selección automática de cables
 """
+from .config_loader import CONFIG, get_config
 
-import yaml
-import os
 
-# Obtener la ruta del archivo config.yaml desde la raíz del proyecto
-_current_dir = os.path.dirname(os.path.abspath(__file__))
-_config_path = os.path.join(_current_dir, '..', '..', 'config.yaml')
-
-with open(_config_path, "r") as f:
-    CONFIG = yaml.safe_load(f)
-
-RESERVA_MINIMA = CONFIG["reserva_minima"]
+def obtener_reserva_requerida(tipo):
+    """
+    Devuelve la reserva mínima configurada para un tipo de cable.
+    """
+    return get_config(f"capas_cables.{tipo}.reserva_minima", 10)
 
 
 def seleccionar_cable(longitud, tipo):
     """
     Determina el cable adecuado y su reserva.
-    Si ninguna longitud cumple, devuelve el más largo disponible.
     """
-    disponibles = sorted(CONFIG["capas_cables"][tipo]["longitudes"])
+    config_tipo = CONFIG["capas_cables"].get(tipo)
+
+    if not config_tipo:
+        raise ValueError(f"Tipo de cable desconocido: {tipo}")
+
+    disponibles = sorted(config_tipo["longitudes"])
+    reserva_minima = config_tipo.get("reserva_minima", 10)
+
     for cable in disponibles:
         reserva = cable - longitud
-        if reserva >= RESERVA_MINIMA:
+        if reserva >= reserva_minima:
             return cable, reserva
     # Si ninguna cumple la reserva mínima, usar el mayor
     return disponibles[-1], disponibles[-1] - longitud

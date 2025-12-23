@@ -1,21 +1,39 @@
 # Configuración para optimización de rutas de fibra en AutoCAD
 # Unidades en metros
-reserva_minima: 10
+
+# Configuración general
+general:
+  # Filtro para identificar qué polilíneas procesar (case-insensitive)
+  filtro_capas_origen: "TRAMO"
+
+  # Formato para nombrar las capas de destino
+  formato_capa_destino: "CABLE PRECONECT {tipo} SM ({cable}M)"
+
+  # Ruta por defecto para reportes
+  ruta_reporte_csv: "logs/reporte_cables.csv"
+
+# Configuración de etiquetas
+etiquetas:
+  tamano_texto: 1.2
+  offset_y: 2.0 # Desplazamiento vertical de las etiquetas
 
 # Capas de cables
 capas_cables:
-  # Cables de distribución
+  # Cables de distribución (XBOX -> HUB)
   xbox_hub:
     tipo: "MPO 12H"
     longitudes: [300]
+    reserva_minima: 15
   # Cables principales
   hub_fat:
     tipo: "2H"
     longitudes: [200, 150, 100]
+    reserva_minima: 10
   # Cables de expansión
   expansion:
     tipo: "1H"
     longitudes: [100, 50]
+    reserva_minima: 10
 
 # Criterios para identificar objetos en capas específicas
 criterios_capa:
