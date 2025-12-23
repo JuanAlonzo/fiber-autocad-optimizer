@@ -3,14 +3,14 @@
 
 # Configuración general
 general:
-  # Filtro para identificar qué polilíneas procesar (case-insensitive)
   filtro_capas_origen: "TRAMO"
-
-  # Formato para nombrar las capas de destino
   formato_capa_destino: "CABLE PRECONECT {tipo} SM ({cable}M)"
-
-  # Ruta por defecto para reportes
   ruta_reporte_csv: "logs/reporte_cables.csv"
+
+referencia_fisica:
+  usar_referencia: true
+  capa_real: "CAT_LINEA DE RED EXISTENTE"
+  tolerancia_busqueda: 10.0
 
 # Configuración de etiquetas
 etiquetas:
