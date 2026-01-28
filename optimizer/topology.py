@@ -1,12 +1,12 @@
 """
 Módulo de Topología: Identifica qué conecta cada tramo en el espacio.
 """
+
 import math
-from .feedback_logger import log_warning
 
 
 def distancia_euclidiana(p1, p2):
-    return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
 
 def obtener_puntos_extremos(poly_obj):
@@ -32,11 +32,11 @@ def encontrar_bloque_cercano(punto, bloques, radio_max=5.0):
     Busca el bloque más cercano a un punto dado dentro de un radio máximo.
     """
     mejor_bloque = None
-    mejor_dist = float('inf')
+    mejor_dist = float("inf")
 
     for bloque in bloques:
         # Asumimos que bloque['position'] es (x, y, z) o (x, y)
-        pos_bloque = bloque['position']
+        pos_bloque = bloque["position"]
         dist = distancia_euclidiana(punto, (pos_bloque[0], pos_bloque[1]))
 
         if dist < mejor_dist:
@@ -64,9 +64,9 @@ def detectar_regla_por_topologia(tramo_obj, lista_bloques):
 
     nombres_conectados = []
     if b_inicio:
-        nombres_conectados.append(b_inicio['name'].upper())
+        nombres_conectados.append(b_inicio["name"].upper())
     if b_fin:
-        nombres_conectados.append(b_fin['name'].upper())
+        nombres_conectados.append(b_fin["name"].upper())
 
     # Lógica Binaria Simplificada
     tiene_xbox = any("X_BOX" in n for n in nombres_conectados)

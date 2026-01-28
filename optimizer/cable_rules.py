@@ -1,6 +1,7 @@
 """
 Lógica de selección automática de cables
 """
+
 from .config_loader import CONFIG, get_config
 
 

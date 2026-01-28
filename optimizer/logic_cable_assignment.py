@@ -35,13 +35,16 @@ def asignar_cables(tramos, tipo_clave, acad):
     reserva_min_necesaria = obtener_reserva_requerida(tipo_clave)
 
     nombre_cable_real = get_config(
-        f"capas_cables.{tipo_clave}.tipo", tipo_clave).upper()
+        f"capas_cables.{tipo_clave}.tipo", tipo_clave
+    ).upper()
 
     formato_capa = get_config(
-        "general.formato_capa_destino", "CABLE PRECONECT {tipo} SM ({cable}M)")
+        "general.formato_capa_destino", "CABLE PRECONECT {tipo} SM ({cable}M)"
+    )
 
     log_info(
-        f"Procesando {len(tramos)} tramo(s) de tipo '{nombre_cable_real}' (Reserva min: {reserva_min_necesaria}m)")
+        f"Procesando {len(tramos)} tramo(s) de tipo '{nombre_cable_real}' (Reserva min: {reserva_min_necesaria}m)"
+    )
     capas_verificadas = set()
 
     for i, tramo in enumerate(tramos, 1):
@@ -54,7 +57,8 @@ def asignar_cables(tramos, tipo_clave, acad):
             cable, reserva = seleccionar_cable(long, tipo_clave)
 
             nueva_capa = formato_capa.format(
-                tipo=nombre_cable_real.upper(), cable=cable)
+                tipo=nombre_cable_real.upper(), cable=cable
+            )
 
             if nueva_capa not in capas_verificadas:
                 asegurar_capa_existe(acad, nueva_capa)
@@ -62,11 +66,11 @@ def asignar_cables(tramos, tipo_clave, acad):
 
             # Advertir si la reserva es insuficiente
             if reserva < 0:
-                log_error(
-                    f"Tramo {handle}: Cable insuficiente (falta {-reserva:.2f}m)")
+                log_error(f"Tramo {handle}: Cable insuficiente (falta {-reserva:.2f}m)")
             if reserva < reserva_min_necesaria:
                 log_warning(
-                    f"Tramo {handle}: Reserva baja ({reserva:.2f}m < {reserva_min_necesaria}m)")
+                    f"Tramo {handle}: Reserva baja ({reserva:.2f}m < {reserva_min_necesaria}m)"
+                )
 
             capa_cambiada = False
             etiqueta_creada = False
@@ -76,8 +80,7 @@ def asignar_cables(tramos, tipo_clave, acad):
                 obj.Layer = nueva_capa
                 capa_cambiada = True
             except Exception as e:
-                log_warning(
-                    f"Tramo {handle}: No se pudo cambiar capa - {str(e)}")
+                log_warning(f"Tramo {handle}: No se pudo cambiar capa - {str(e)}")
 
             # Intentar crear etiqueta de texto
             try:
@@ -88,23 +91,25 @@ def asignar_cables(tramos, tipo_clave, acad):
                 log_warning(f"Tramo {handle}: No se pudo etiquetar - {str(e)}")
 
             # Registrar resultado (aunque no se haya podido modificar el dibujo)
-            resultados.append({
-                "handle": handle,
-                "capa": nueva_capa if capa_cambiada else tramo.get("layer", "DESCONOCIDA"),
-                "longitud": long,
-                "reserva": reserva,
-                "cable": cable,
-                "capa_cambiada": capa_cambiada,
-                "etiqueta_creada": etiqueta_creada
-            })
+            resultados.append(
+                {
+                    "handle": handle,
+                    "capa": nueva_capa
+                    if capa_cambiada
+                    else tramo.get("layer", "DESCONOCIDA"),
+                    "longitud": long,
+                    "reserva": reserva,
+                    "cable": cable,
+                    "capa_cambiada": capa_cambiada,
+                    "etiqueta_creada": etiqueta_creada,
+                }
+            )
 
         except Exception as e:
             errores += 1
-            log_error(
-                f"Error procesando tramo {tramo.get('handle', '?')}: {e}")
+            log_error(f"Error procesando tramo {tramo.get('handle', '?')}: {e}")
             continue
 
-    log_info(
-        f"Proceso completado: {len(resultados)} exitosos, {errores} con errores")
+    log_info(f"Proceso completado: {len(resultados)} exitosos, {errores} con errores")
 
     return resultados

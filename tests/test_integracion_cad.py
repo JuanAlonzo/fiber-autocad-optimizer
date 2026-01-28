@@ -1,18 +1,12 @@
 """
 Tests de integración con AutoCAD (Requiere AutoCAD abierto)
 """
+
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'src')))
-
-from optimizer.autocad_utils import obtener_tramos, get_acad_instance   # noqa E402
+from optimizer import obtener_tramos, get_acad_instance
 
 
 class TestAutoCADIntegration(unittest.TestCase):
-
     def setUp(self):
         """Se ejecuta antes de cada test. Verifica conexión."""
         try:
@@ -21,7 +15,8 @@ class TestAutoCADIntegration(unittest.TestCase):
             _ = self.acad.doc.Name
         except Exception:
             self.skipTest(
-                "AutoCAD no está disponible o abierto. Saltando tests de integración.")
+                "AutoCAD no está disponible o abierto. Saltando tests de integración."
+            )
 
     def test_conexion_activa(self):
         """Verifica que la instancia de AutoCAD responda"""
@@ -45,5 +40,5 @@ class TestAutoCADIntegration(unittest.TestCase):
         self.assertIsInstance(tramo["longitud"], float)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

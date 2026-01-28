@@ -1,11 +1,5 @@
 import unittest
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
-
-from optimizer.cable_rules import seleccionar_cable, obtener_reserva_requerida  # noqa E402
+from optimizer import seleccionar_cable, obtener_reserva_requerida
 
 
 class TestReglasCables(unittest.TestCase):
@@ -40,5 +34,5 @@ class TestReglasCables(unittest.TestCase):
             seleccionar_cable(100, "TIPO_INVENTADO_XYZ")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,23 +1,16 @@
 """
 Optimizador de Fibra Óptica para AutoCAD - Punto de Entrada Principal
 """
-import sys
-import os
 
-# --- CORRECCIÓN DE IMPORTACIONES (FIX) ---
-# Agregamos la carpeta 'src' al path de Python para que encuentre el módulo 'optimizer'
-current_dir = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(current_dir, 'src')
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
-# -----------------------------------------
-
-# Ahora sí podemos importar sin errores
-try:
-    from optimizer import get_acad_instance, asignar_cables, exportar_csv, obtener_tramos, obtener_bloques, log_info, log_error, detectar_regla_por_topologia
-except ImportError as e:
-    print(f"\nError CRÍTICO de importación: {e}")
-    sys.exit(1)
+from optimizer import (
+    get_acad_instance,
+    asignar_cables,
+    exportar_csv,
+    obtener_tramos,
+    obtener_bloques,
+    log_info,
+    detectar_regla_por_topologia,
+)
 
 
 def procesar_automaticamente(acad):
@@ -34,7 +27,7 @@ def procesar_automaticamente(acad):
     print("    • Buscando tramos de fibra...")
     tramos = obtener_tramos(acad)
     if not tramos:
-        print("⚠️  No se encontraron tramos.")
+        print("No se encontraron tramos.")
         return
     print(f"      -> Encontrados {len(tramos)} tramos.")
 
@@ -43,11 +36,11 @@ def procesar_automaticamente(acad):
     print("    (Este proceso decide automáticamente si es MPO 300m o 2H Distr.)")
 
     confirmacion = input(
-        "\n    ¿Deseas proceder con los cambios en AutoCAD? (s/n): ").lower()
-    if confirmacion != 's':
+        "\n    ¿Deseas proceder con los cambios en AutoCAD? (s/n): "
+    ).lower()
+    if confirmacion != "s":
         return
 
-    # AQUI ESTÁ EL TRUCO:
     # En lugar de pasar un solo 'tipo' a asignar_cables,
     # vamos a iterar aquí y decidir tramo por tramo.
 
@@ -62,14 +55,14 @@ def procesar_automaticamente(acad):
 
     for tramo in tramos:
         # Magia de topología
-        regla = detectar_regla_por_topologia(tramo['obj'], bloques)
+        regla = detectar_regla_por_topologia(tramo["obj"], bloques)
 
         if regla == "xbox_hub":
             grupo_xbox.append(tramo)
         else:
             grupo_distribucion.append(tramo)
 
-    print(f"\n    [Detección Finalizada]")
+    print("\n    [Detección Finalizada]")
     print(f"    • Rutas Alimentación (XBOX-HUB): {len(grupo_xbox)}")
     print(f"    • Rutas Distribución (Resto):    {len(grupo_distribucion)}")
 
@@ -86,14 +79,14 @@ def procesar_automaticamente(acad):
         resultados_totales.extend(res2)
 
     # 4. Reporte
-    print(f"\n[3] Generando reporte unificado...")
+    print("\n[3] Generando reporte unificado...")
     exportar_csv(resultados_totales)
 
 
 def main():
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("   OPTIMIZADOR DE CABLEADO FIBRA AUTOCAD")
-    print("="*50)
+    print("=" * 50)
 
     # 1. Conexión a AutoCAD
     try:
@@ -105,6 +98,7 @@ def main():
     except Exception as e:
         print(f"\nError : {e}")
         import traceback
+
         traceback.print_exc()
 
 

@@ -4,8 +4,8 @@ Biblioteca de utilidades para comunicación con AutoCAD
 
 import math
 from pyautocad import Autocad
-from .feedback_logger import log_warning, log_info
 from .config_loader import get_config
+from .feedback_logger import log_warning
 
 _acad_instance = None
 
@@ -48,13 +48,11 @@ def indexar_capa_referencia(acad, nombre_capa):
             if ent.Layer.upper() == nombre_capa.upper():
                 centro = obtener_centro_bbox(ent)
                 if centro:
-                    referencias.append({
-                        "centro": centro,
-                        "longitud": ent.Length,
-                        "handle": ent.Handle
-                    })
+                    referencias.append(
+                        {"centro": centro, "longitud": ent.Length, "handle": ent.Handle}
+                    )
                     count += 1
-        except:
+        except Exception:
             continue
 
     print(f"      -> {count} rutas reales indexadas.")
@@ -69,7 +67,7 @@ def encontrar_longitud_real(centro_tramo, referencias, tolerancia):
         return None
 
     mejor_ref = None
-    mejor_dist = float('inf')
+    mejor_dist = float("inf")
     tx, ty = centro_tramo
 
     # Búsqueda lineal (para <5000 objetos es suficientemente rápido, <0.5s)
@@ -81,7 +79,7 @@ def encontrar_longitud_real(centro_tramo, referencias, tolerancia):
             continue
 
         # Distancia euclidiana real
-        dist = math.sqrt((tx - rx)**2 + (ty - ry)**2)
+        dist = math.sqrt((tx - rx) ** 2 + (ty - ry) ** 2)
 
         if dist < mejor_dist:
             mejor_dist = dist
@@ -103,13 +101,15 @@ def obtener_bloques(nombres_bloques, acad=None):
     for ent in acad.iter_objects("AcDbBlockReference"):
         try:
             if ent.Name in nombres_bloques:
-                bloques.append({
-                    "handle": ent.Handle,
-                    "name": ent.Name,
-                    "position": ent.InsertionPoint,
-                    "layer": ent.Layer,
-                    "obj": ent
-                })
+                bloques.append(
+                    {
+                        "handle": ent.Handle,
+                        "name": ent.Name,
+                        "position": ent.InsertionPoint,
+                        "layer": ent.Layer,
+                        "obj": ent,
+                    }
+                )
         except Exception:
             continue
     return bloques
@@ -119,7 +119,7 @@ def obtener_longitud_tramo(ent):
     """
     Devuelve la longitud si es una polilínea.
     """
-    if ent.ObjectName == 'AcDbPolyline':
+    if ent.ObjectName == "AcDbPolyline":
         return ent.Length
     return 0
 
@@ -132,8 +132,7 @@ def obtener_tramos(acad=None):
     if acad is None:
         acad = get_acad_instance()
 
-    filtro_capa = get_config(
-        "general.filtro_capas_origen", "TRAMO").upper()
+    filtro_capa = get_config("general.filtro_capas_origen", "TRAMO").upper()
     # Configuración de referencia
     usar_ref = get_config("referencia_fisica.usar_referencia", False)
     capa_real = get_config("referencia_fisica.capa_real", "")
@@ -166,28 +165,31 @@ def obtener_tramos(acad=None):
 
                     if referencias and centro:
                         long_real = encontrar_longitud_real(
-                            centro, referencias, tolerancia)
+                            centro, referencias, tolerancia
+                        )
                         if long_real:
                             longitud_final = long_real
                             es_real = True
                             coincidencias += 1
 
-                    tramos.append({
-                        "handle": handle,
-                        "layer": layer,
-                        "longitud": longitud_final,
-                        "longitud_dibujo": longitud,
-                        "es_real": es_real,
-                        "obj": ent
-                    })
+                    tramos.append(
+                        {
+                            "handle": handle,
+                            "layer": layer,
+                            "longitud": longitud_final,
+                            "longitud_dibujo": longitud,
+                            "es_real": es_real,
+                            "obj": ent,
+                        }
+                    )
                 except Exception as e:
                     # Error al leer propiedades específicas
-                    log_warning(
-                        f"Error tramo {ent.Handle}: {e}")
+                    log_warning(f"Error tramo {ent.Handle}: {e}")
                     continue
-        except Exception as e:
+        except Exception:
             continue
     if usar_ref:
         print(
-            f"      -> {coincidencias}/{len(tramos)} tramos emparejados con ruta real.")
+            f"      -> {coincidencias}/{len(tramos)} tramos emparejados con ruta real."
+        )
     return tramos
