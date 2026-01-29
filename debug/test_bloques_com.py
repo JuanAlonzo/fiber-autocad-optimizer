@@ -7,7 +7,13 @@ from optimizer import extract_specific_blocks
 
 def test_extraccion_equipos():
     # Definir los objetivos
-    bloques_objetivo = ["X_BOX_P", "HBOX_3.5P", "FAT_INT_3.0_P", "FAT_FINAL_3.0_P"]
+    bloques_objetivo = [
+        "X_BOX_P",
+        "HBOX_3.5P",
+        "FAT_INT_3.0_P",
+        "FAT_FINAL_3.0_P",
+        "FAT_OUT_FIN_P",
+    ]
 
     print(f"--- Iniciando búsqueda de: {', '.join(bloques_objetivo)} ---")
 

@@ -1,38 +1,9 @@
 # Configuración para optimización de rutas de fibra en AutoCAD
-# Unidades en metros
 
 # Configuración general
 general:
-  filtro_capas_origen: "TRAMO"
-  formato_capa_destino: "CABLE PRECONECT {tipo} SM ({cable}M)"
   ruta_reporte_csv: "logs/reporte_cables.csv"
-
-referencia_fisica:
-  usar_referencia: true
-  capa_real: "CAT_LINEA DE RED EXISTENTE"
-  tolerancia_busqueda: 10.0
-
-# Configuración de etiquetas
-etiquetas:
-  tamano_texto: 1.2
-  offset_y: 2.0 # Desplazamiento vertical de las etiquetas
-
-# Capas de cables
-capas_cables:
-  # Cables de distribución (XBOX -> HUB)
-  xbox_hub:
-    tipo: "MPO 12H"
-    longitudes: [300]
-    reserva_minima: 15
-  # Cables principales
-  distribucion:
-    tipo: "2H"
-    longitudes: [200, 150, 100]
-    reserva_minima: 10
-
-# Criterios para identificar objetos en capas específicas
-criterios_capa:
-  - "CABLE"
+  mostrar_grafo_completo: true
 
 # Configuración de rutas y tolerancias
 rutas:
@@ -43,6 +14,40 @@ rutas:
   umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
   offset_visual_debug: 0.5 # Desplazamiento de la línea dibujada
 
-# DEBUG
-debug:
-  mostrar_grafo_completo: true
+# Catálogo de cables y reglas topológicas
+catalogo_cables:
+  mpo_300:
+    nombre_tecnico: "MPO 12H"
+    longitudes: [300]
+    reserva_minima: 15
+
+  distribucion_std:
+    nombre_tecnico: "2H"
+    longitudes: [200, 150, 100]
+    reserva_minima: 10
+
+  acometida_expansion:
+    nombre_tecnico: "1H"
+    longitudes: [100, 50]
+    reserva_minima: 10
+
+# Reglas topológicas para selección de cables
+reglas_topologia:
+  - origen: "X_BOX_P"
+    destino: "HBOX_3.5P"
+    id_catalogo: "mpo_300"
+
+  - origen: "HBOX_3.5P"
+    destino: "FAT_INT_3.0P"
+    id_catalogo: "distribucion_std"
+  - origen: "FAT_INT_3.0P"
+    destino: "FAT_FINAL_3.0P"
+    id_catalogo: "distribucion_std"
+
+  - origen: "FAT_FINAL_3.0P"
+    destino: "FAT_OUT_FIN_P"
+    id_catalogo: "acometida_expansion"
+
+  - origen: "FAT_INT_3.0P"
+    destino: "FAT_OUT_FIN_P"
+    id_catalogo: "acometida_expansion"

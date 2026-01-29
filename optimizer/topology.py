@@ -5,10 +5,6 @@ Módulo de Topología: Identifica qué conecta cada tramo en el espacio.
 import math
 
 
-def distancia_euclidiana(p1, p2):
-    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-
 def obtener_puntos_extremos(poly_obj):
     """
     Obtiene las coordenadas (x,y) de inicio y fin de una polilínea.

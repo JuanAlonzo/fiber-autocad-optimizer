@@ -4,25 +4,25 @@ Optimizador de Fibra Óptica para AutoCAD
 
 from .acad_block_reader import extract_specific_blocks
 from .acad_geometry import NetworkGraph
-from .acad_utils import obtener_tramos, obtener_bloques, get_acad_instance
-from .cable_rules import seleccionar_cable, obtener_reserva_requerida
-from .feedback_logger import log_info, log_warning, log_error
-from .logic_cable_assignment import asignar_cables
+from .cable_rules import seleccionar_cable
+from .config_loader import get_config
+from .acad_tools import (
+    get_acad_com,
+    dibujar_debug_offset,
+    insertar_etiqueta_inteligente,
+)
 from .report_generator import exportar_csv
-from .topology import detectar_regla_por_topologia
+from .topology import detectar_regla_por_topologia, calcular_ruta_completa
 
 __all__ = [
-    NetworkGraph,
     extract_specific_blocks,
-    obtener_tramos,
-    obtener_bloques,
-    get_acad_instance,
+    NetworkGraph,
     seleccionar_cable,
-    obtener_reserva_requerida,
-    log_info,
-    log_warning,
-    log_error,
-    asignar_cables,
+    get_config,
+    get_acad_com,
+    dibujar_debug_offset,
+    insertar_etiqueta_inteligente,
     exportar_csv,
     detectar_regla_por_topologia,
+    calcular_ruta_completa,
 ]
