@@ -75,21 +75,35 @@ class NetworkGraph:
 
         # Cola de prioridad: (distancia_acumulada, nodo_actual)
         queue = [(0, start_node)]
-        visited = set()
+        visited = {}
+
+        visited[start_node] = (0, None)  # distancia, nodo_previo
 
         while queue:
             current_dist, current_node = heapq.heappop(queue)
 
-            if current_node in visited:
-                continue
-            visited.add(current_node)
+            # if current_node in visited:
+            #     continue
+            # visited.add(current_node)
 
             if current_node == end_node:
-                return current_dist
+                path = []
+                curr = end_node
+                while curr is not None:
+                    path.append(self.nodes[curr])  # guarda coord real
+                    _, parent = visited[curr]
+                    curr = parent
+                return current_dist, path[::-1]
+
+            if current_dist > visited[current_node][0]:
+                continue
 
             if current_node in self.adj:
                 for neighbor, weight in self.adj[current_node]:
-                    if neighbor not in visited:
-                        heapq.heappush(queue, (current_dist + weight, neighbor))
+                    new_dist = current_dist + weight
+
+                    if neighbor not in visited or new_dist < visited[neighbor][0]:
+                        visited[neighbor] = (new_dist, current_node)
+                        heapq.heappush(queue, (new_dist, neighbor))
 
         return None  # No hay camino (islas separadas)

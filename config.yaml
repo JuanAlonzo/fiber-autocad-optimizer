@@ -33,3 +33,16 @@ capas_cables:
 # Criterios para identificar objetos en capas específicas
 criterios_capa:
   - "CABLE"
+
+# Configuración de rutas y tolerancias
+rutas:
+  capa_red_vial: "CAT_LINEA DE RED EXISTENTE"
+  capa_tramos_logicos: "TRAMO"
+  capa_debug: "DEBUG_RUTAS_CALCULADAS"
+  tolerancia_snap_equipos: 2.0 # Metros para detectar equipo cerca de la punta
+  umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
+  offset_visual_debug: 0.5 # Desplazamiento de la línea dibujada
+
+# DEBUG
+debug:
+  mostrar_grafo_completo: true

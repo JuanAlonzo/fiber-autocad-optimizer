@@ -2,6 +2,8 @@
 Aplica las reglas a cada tramo del dibujo en AutoCAD
 """
 
+import win32com.client
+import pythoncom
 from .cable_rules import seleccionar_cable, obtener_reserva_requerida
 from .text_labels import etiquetar_tramo
 from .feedback_logger import log_error, log_warning, log_info
@@ -113,3 +115,48 @@ def asignar_cables(tramos, tipo_clave, acad):
     log_info(f"Proceso completado: {len(resultados)} exitosos, {errores} con errores")
 
     return resultados
+
+
+def asignar_cables_com(tramos_data, acad_doc):
+    """
+    tramos_data: Lista de dicts con {'handle': '...', 'nuevo_layer': '...', 'etiqueta': '...'}
+    acad_doc: Objeto Document de win32com
+    """
+    msp = acad_doc.ModelSpace
+
+    # Crear capas necesarias primero (optimización)
+    capas_necesarias = set(t["nuevo_layer"] for t in tramos_data)
+    for capa in capas_necesarias:
+        try:
+            acad_doc.Layers.Add(capa)
+        except Exception:
+            pass  # La capa ya existe
+
+    for tramo in tramos_data:
+        try:
+            # Obtener objeto por Handle (Mucho más rápido que iterar)
+            obj = acad_doc.HandleToObject(tramo["handle"])
+
+            # 1. Cambiar Capa
+            if obj.Layer != tramo["nuevo_layer"]:
+                obj.Layer = tramo["nuevo_layer"]
+
+            # 2. Crear Etiqueta (MText o Text)
+            # Usamos las coordenadas del objeto para centrar el texto
+            # Nota: Para polilíneas, obj.Coordinates devuelve lista plana
+            if obj.ObjectName == "AcDbPolyline":
+                coords = obj.Coordinates
+                # Lógica simple para el centro (promedio start/end)
+                mid_x = (coords[0] + coords[-2]) / 2
+                mid_y = (coords[1] + coords[-1]) / 2
+
+                insert_pnt = win32com.client.VARIANT(
+                    pythoncom.VT_ARRAY | pythoncom.VT_R8, (mid_x, mid_y, 0)
+                )
+                text_obj = msp.AddText(
+                    tramo["etiqueta"], insert_pnt, 1.2
+                )  # 1.2 es altura texto
+                text_obj.Layer = "ETIQUETAS_AUTO"
+
+        except Exception as e:
+            log_warning(f"Error en handle {tramo['handle']}: {e}")

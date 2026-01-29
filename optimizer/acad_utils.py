@@ -3,22 +3,36 @@ Biblioteca de utilidades para comunicación con AutoCAD
 """
 
 import math
+import win32com.client
 from pyautocad import Autocad
 from .config_loader import get_config
-from .feedback_logger import log_warning
-
-_acad_instance = None
+from .feedback_logger import log_warning, log_error
 
 
 def get_acad_instance():
     """
-    Devuelve la conexión activa o crea una nueva si no existe.
-    Evita conectar al importar el archivo.
+    Devuelve la conexión activa.
     """
-    global _acad_instance
-    if _acad_instance is None:
-        _acad_instance = Autocad(create_if_not_exists=True)
-    return _acad_instance
+    return Autocad(create_if_not_exists=True)
+
+
+def get_acad_com():
+    """
+    Devuelve la instancia COM de AutoCAD activa.
+    """
+    try:
+        acad = win32com.client.Dispatch("AutoCAD.Application")
+        return acad
+    except Exception as e:
+        log_error(f"Error conectando con COM: {e}")
+        return None
+
+
+def coordinates_to_tuples(coords_flat):
+    """
+    Convierte una lista plana [x1, y1, x2, y2, ...] a una lista de tuplas [(x1,y1), (x2,y2), ...]
+    """
+    return list(zip(coords_flat[::2], coords_flat[1::2])) if coords_flat else []
 
 
 def obtener_centro_bbox(ent):
