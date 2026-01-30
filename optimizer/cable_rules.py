@@ -6,17 +6,35 @@ Determina el cable ideal basándose en la topología (Origen->Destino) y la long
 from .config_loader import get_config
 
 
+def obtener_grupo_equipo(nombre_bloque):
+    """
+    Busca a qué grupo pertenece un bloque (ej. 'FAT_INT_3.0_P' -> 'fat_int').
+    """
+    config_equipos = get_config("equipos", {})
+    nombre_bloque = nombre_bloque.upper()
+
+    for grupo, lista_nombres in config_equipos.items():
+        # Convertimos la lista de config a mayúsculas para comparar seguro
+        if any(nombre_bloque == n.upper() for n in lista_nombres):
+            return grupo
+
+    return "desconocido"
+
+
 def buscar_regla_topologica(nombre_origen, nombre_destino):
     """
     Devuelve la reserva mínima configurada para un tipo de cable.
     """
+    grupo_origen = obtener_grupo_equipo(nombre_origen)
+    grupo_destino = obtener_grupo_equipo(nombre_destino)
+
     reglas = get_config("reglas_topologia", [])
 
-    n_origen = nombre_origen.upper()
-    n_destino = nombre_destino.upper()
-
     for regla in reglas:
-        if regla["origen"] in n_origen and regla["destino"] in n_destino:
+        if (
+            regla.get("origen_grupo") == grupo_origen
+            and regla.get("destino_grupo") == grupo_destino
+        ):
             return regla["id_catalogo"]
 
     return None

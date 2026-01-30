@@ -4,7 +4,7 @@ Permite leer atributos y propiedades dinámicas.
 """
 
 import win32com.client
-from .feedback_logger import log_error
+from .feedback_logger import logger
 
 
 def get_acad_com():
@@ -13,7 +13,7 @@ def get_acad_com():
         acad = win32com.client.Dispatch("AutoCAD.Application")
         return acad
     except Exception as e:
-        log_error(f"No se pudo conectar vía COM: {e}")
+        logger.debug(f"No se pudo conectar vía COM: {e}")
         return None
 
 

@@ -1,43 +1,35 @@
-"""
-Tests de integración con AutoCAD (Requiere AutoCAD abierto)
-"""
-
 import unittest
-from optimizer import obtener_tramos, get_acad_instance
+import win32com.client
+from optimizer.acad_tools import get_acad_com
 
 
-class TestAutoCADIntegration(unittest.TestCase):
+class TestIntegracionCAD(unittest.TestCase):
     def setUp(self):
-        """Se ejecuta antes de cada test. Verifica conexión."""
-        try:
-            self.acad = get_acad_instance()
-            # Verificamos si realmente hay conexión probando una propiedad simple
-            _ = self.acad.doc.Name
-        except Exception:
-            self.skipTest(
-                "AutoCAD no está disponible o abierto. Saltando tests de integración."
-            )
+        self.acad = get_acad_com()
+        if not self.acad:
+            self.skipTest("AutoCAD no detectado")
 
-    def test_conexion_activa(self):
-        """Verifica que la instancia de AutoCAD responda"""
-        self.assertIsNotNone(self.acad.doc)
+    def test_conexion_com(self):
+        """Verifica que tenemos control del ModelSpace."""
+        doc = self.acad.ActiveDocument
+        msp = doc.ModelSpace
+        self.assertIsNotNone(msp.Count)
+        print(f"\n[TEST] Conectado a: {doc.Name}")
 
-    def test_obtener_tramos_estructura(self):
-        """Verifica que obtener_tramos devuelva una lista de diccionarios con las llaves correctas"""
-        tramos = obtener_tramos(self.acad)
+    def test_dibujar_linea(self):
+        """Intenta dibujar una línea temporal y borrarla."""
+        msp = self.acad.ActiveDocument.ModelSpace
+        import pythoncom
 
-        # Si no hay tramos dibujados, la lista está vacía, lo cual es válido
-        if not tramos:
-            print("\n[INFO] No se encontraron tramos para testear estructura.")
-            return
+        # Dibujar línea (0,0) a (10,10)
+        p1 = win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, (0, 0, 0))
+        p2 = win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, (10, 10, 0))
 
-        # Si hay tramos, verificamos el primero
-        tramo = tramos[0]
-        self.assertIn("handle", tramo)
-        self.assertIn("layer", tramo)
-        self.assertIn("longitud", tramo)
-        self.assertIn("obj", tramo)
-        self.assertIsInstance(tramo["longitud"], float)
+        linea = msp.AddLine(p1, p2)
+        handle = linea.Handle
+
+        self.assertTrue(handle)  # Si tiene handle, existe
+        linea.Delete()  # Limpieza
 
 
 if __name__ == "__main__":

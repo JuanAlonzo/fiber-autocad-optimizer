@@ -1,15 +1,13 @@
-import math
+from .utils_math import distancia_euclidiana
+from .config_loader import get_config
 
 
-def distancia_euclidiana(p1, p2):
-    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-
-def point_to_key(point, tolerance=0.01):
+def point_to_key(point, tolerance):
     """
     Convierte coordenadas flotantes a un string único (Key) para el grafo.
     Redondea según la tolerancia para unir puntos muy cercanos (Snap).
     """
+    tolerance = get_config("general.tolerance", 0.01)
     # Redondeamos para que (100.001, 200) sea igual a (100.002, 200)
     x = round(point[0] / tolerance) * tolerance
     y = round(point[1] / tolerance) * tolerance

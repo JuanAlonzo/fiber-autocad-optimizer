@@ -5,21 +5,33 @@ Cargador centralizado de configuración
 import yaml
 import os
 import sys
+from .feedback_logger import logger
 
-_current_dir = os.path.dirname(os.path.abspath(__file__))
-_config_path = os.path.join(_current_dir, "..", "config.yaml")
+
+def get_base_path():
+    """Devuelve la ruta base del proyecto."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+
+
+if getattr(sys, "frozen", False):
+    _current_dir = os.path.dirname(sys.executable)
+else:
+    _config_path = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
 
 
 try:
     with open(_config_path, "r") as file:
         CONFIG = yaml.safe_load(file)
 except FileNotFoundError:
-    print(
+    logger.critical(
         f"Error critico: No se encontro el archivo de configuracion 'config.yaml' en la ruta {_config_path}."
     )
     sys.exit(1)
 except Exception as e:
-    print(f"Error critico al cargar la configuracion: {e}")
+    logger.critical(f"Error critico al cargar la configuracion: {e}")
     sys.exit(1)
 
 

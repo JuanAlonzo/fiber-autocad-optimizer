@@ -4,20 +4,24 @@ Genera reportes en formato CSV
 
 import csv
 import os
-from .config_loader import get_config
+from datetime import datetime
+from .feedback_logger import logger
 
 
 def exportar_csv(datos, nombre_archivo=None):
     if not datos:
-        print("No hay datos para exportar.")
+        logger.warning("No hay datos para exportar.")
         return
 
     if nombre_archivo is None:
-        nombre_archivo = get_config(
-            "general.ruta_reporte_csv", "logs/reporte_recorrido.csv"
-        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_archivo = f"reportes/reporte_tramos_{timestamp}.csv"
 
-    os.makedirs(os.path.dirname(nombre_archivo), exist_ok=True)
+    try:
+        os.makedirs(os.path.dirname(nombre_archivo), exist_ok=True)
+    except Exception as e:
+        logger.error(f"Error al crear directorio: {e}")
+        return
 
     encabezados = [
         "handle",
@@ -25,7 +29,7 @@ def exportar_csv(datos, nombre_archivo=None):
         "destino",
         "longitud_real",
         "cable_asignado",
-        "tipo",
+        "tipo_tecnico",
         "reserva",
         "estado",
     ]
@@ -48,8 +52,8 @@ def exportar_csv(datos, nombre_archivo=None):
                         d["estado"],
                     ]
                 )
-        print(f"Reporte exportado en: {nombre_archivo}")
+        logger.info(f"Reporte exportado en: {nombre_archivo}")
 
     except Exception as e:
-        print(f"Error al exportar CSV: {e}")
+        logger.error(f"Error al exportar CSV: {e}")
         return

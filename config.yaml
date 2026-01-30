@@ -2,8 +2,25 @@
 
 # Configuración general
 general:
-  ruta_reporte_csv: "logs/reporte_cables.csv"
   mostrar_grafo_completo: true
+  max_radius: 20 # Radio de búsqueda para entrar a la red vial.
+  umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
+  tolerance: 0.01 # Tolerancia para comparaciones geométricas
+
+visualizacion:
+  color_ok: 3 # Verde
+  color_error: 1 # Rojo
+  color_debug: 6 # Magenta
+  color_grafo: 8 # Gris
+
+etiquetas:
+  offset_y: 1.5 # Offset vertical para etiquetas de rutas
+
+tolerancias:
+  snap_grafo_vial: 0.1 # Fusión de nodos cercanos en la calle
+  radio_busqueda_acceso: 20.0 # Máxima distancia para buscar una calle desde un equipo
+  desprecio_poste: 3.0 # Si el equipo está a menos de Xm de la calle, distancia=0
+  radio_snap_equipos: 5.0 # Distancia para asociar polilínea a equipo (antes estaba en 2.0 en otro lado)
 
 # Configuración de rutas y tolerancias
 rutas:
@@ -14,40 +31,52 @@ rutas:
   umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
   offset_visual_debug: 0.5 # Desplazamiento de la línea dibujada
 
+equipos:
+  xbox: ["X_BOX_P", "X_BOX_EXISTENTE"] # Nombre actual, relacionados
+  hbox: ["HBOX_3.5P", "HBOX_4.0P"]
+  fat_int: ["FAT_INT_3.0_P", "FAT_INT_2.0_P"]
+  fat_final: ["FAT_FINAL_3.0_P"]
+  fat_out: ["FAT_OUT_FIN_P", "FAT_OUT_EXP"]
+
 # Catálogo de cables y reglas topológicas
 catalogo_cables:
   mpo_300:
-    nombre_tecnico: "MPO 12H"
+    nombre_tecnico: "MPO 12H SM"
     longitudes: [300]
     reserva_minima: 15
 
   distribucion_std:
-    nombre_tecnico: "2H"
+    nombre_tecnico: "2H SM"
     longitudes: [200, 150, 100]
     reserva_minima: 10
 
   acometida_expansion:
-    nombre_tecnico: "1H"
+    nombre_tecnico: "1H SM"
     longitudes: [100, 50]
     reserva_minima: 10
 
 # Reglas topológicas para selección de cables
 reglas_topologia:
-  - origen: "X_BOX_P"
-    destino: "HBOX_3.5P"
+  - origen_grupo: "xbox"
+    destino_grupo: "hbox"
     id_catalogo: "mpo_300"
 
-  - origen: "HBOX_3.5P"
-    destino: "FAT_INT_3.0P"
-    id_catalogo: "distribucion_std"
-  - origen: "FAT_INT_3.0P"
-    destino: "FAT_FINAL_3.0P"
+  - origen_grupo: "hbox"
+    destino_grupo: "fat_int"
     id_catalogo: "distribucion_std"
 
-  - origen: "FAT_FINAL_3.0P"
-    destino: "FAT_OUT_FIN_P"
+  - origen_grupo: "fat_int"
+    destino_grupo: "fat_int"
+    id_catalogo: "distribucion_std"
+
+  - origen_grupo: "fat_int"
+    destino_grupo: "fat_final"
+    id_catalogo: "distribucion_std"
+
+  - origen_grupo: "fat_int"
+    destino_grupo: "fat_out"
     id_catalogo: "acometida_expansion"
 
-  - origen: "FAT_INT_3.0P"
-    destino: "FAT_OUT_FIN_P"
+  - origen_grupo: "fat_final"
+    destino_grupo: "fat_out"
     id_catalogo: "acometida_expansion"

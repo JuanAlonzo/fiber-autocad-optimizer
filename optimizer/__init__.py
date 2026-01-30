@@ -10,9 +10,12 @@ from .acad_tools import (
     get_acad_com,
     dibujar_debug_offset,
     insertar_etiqueta_inteligente,
+    dibujar_circulo_error,
+    dibujar_grafo_completo,
 )
+from .feedback_logger import logger
 from .report_generator import exportar_csv
-from .topology import detectar_regla_por_topologia, calcular_ruta_completa
+from .topology import calcular_ruta_completa
 
 __all__ = [
     extract_specific_blocks,
@@ -20,9 +23,11 @@ __all__ = [
     seleccionar_cable,
     get_config,
     get_acad_com,
+    logger,
     dibujar_debug_offset,
     insertar_etiqueta_inteligente,
+    dibujar_circulo_error,
+    dibujar_grafo_completo,
     exportar_csv,
-    detectar_regla_por_topologia,
     calcular_ruta_completa,
 ]

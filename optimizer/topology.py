@@ -3,6 +3,7 @@ Módulo de Topología: Identifica qué conecta cada tramo en el espacio.
 """
 
 import math
+from .config_loader import get_config
 
 
 def obtener_puntos_extremos(poly_obj):
@@ -23,7 +24,7 @@ def obtener_puntos_extremos(poly_obj):
         return None, None
 
 
-def encontrar_bloque_cercano(punto, bloques, radio_max=5.0):
+def encontrar_bloque_cercano(punto, bloques, radio_max):
     """Busca el bloque más cercano (Snap a Equipos)."""
     mejor_bloque = None
     mejor_dist = float("inf")
@@ -41,46 +42,18 @@ def encontrar_bloque_cercano(punto, bloques, radio_max=5.0):
     return None, None
 
 
-def detectar_regla_por_topologia(tramo_obj, lista_bloques):
-    """
-    Analiza un tramo y determina si es 'xbox_hub' o 'distribucion'
-    basándose en los bloques que tiene en sus extremos.
-    """
-    p_inicio, p_fin = obtener_puntos_extremos(tramo_obj)
-
-    if not p_inicio:
-        return "distribucion"  # Ante la duda, regla estándar
-
-    # Buscar bloques en las puntas (Radio de tolerancia 5m, ajustable)
-    b_inicio = encontrar_bloque_cercano(p_inicio, lista_bloques, radio_max=5.0)
-    b_fin = encontrar_bloque_cercano(p_fin, lista_bloques, radio_max=5.0)
-
-    nombres_conectados = []
-    if b_inicio:
-        nombres_conectados.append(b_inicio["name"].upper())
-    if b_fin:
-        nombres_conectados.append(b_fin["name"].upper())
-
-    # Lógica Binaria Simplificada
-    tiene_xbox = any("X_BOX" in n for n in nombres_conectados)
-    tiene_hbox = any("HBOX" in n for n in nombres_conectados)
-
-    # REGLA MAESTRA 1: Si conecta un XBOX con un HBOX -> Es cable de 300m
-    if tiene_xbox and tiene_hbox:
-        return "xbox_hub"
-
-    # REGLA MAESTRA 2: Cualquier otra cosa (HBOX-FAT, FAT-FAT) -> Distribución
-    return "distribucion"
-
-
 def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     """
     Calcula la ruta completa (lista de puntos) entre dos coordenadas.
     Retorna: (distancia_total, lista_puntos_para_dibujar, metadata)
     """
+    R_RADIUS = get_config("tolerancias.radio_busqueda_acceso", 20.0)
+    UMB_DESPRECIO = get_config("tolerancias.desprecio_poste", 3.0)
+    R_SNAP = get_config("tolerancias.radio_snap_equipos", 5.0)
+
     # Identifica Equipos (Inicio y Fin)
-    eq_inicio, d_ini = encontrar_bloque_cercano(p_inicio, lista_bloques)
-    eq_fin, d_fin = encontrar_bloque_cercano(p_fin, lista_bloques)
+    eq_inicio, d_ini = encontrar_bloque_cercano(p_inicio, lista_bloques, R_SNAP)
+    eq_fin, d_fin = encontrar_bloque_cercano(p_fin, lista_bloques, R_SNAP)
 
     if not eq_inicio or not eq_fin:
         return None, [], "Error: Extremo sin equipo cercano (<2m)"
@@ -90,8 +63,8 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     pos_ini = (eq_inicio["xyz"][0], eq_inicio["xyz"][1])
     pos_fin = (eq_fin["xyz"][0], eq_fin["xyz"][1])
 
-    node_a, dist_acceso_a = grafo.find_nearest_node(pos_ini, max_radius=20.0)
-    node_b, dist_acceso_b = grafo.find_nearest_node(pos_fin, max_radius=20.0)
+    node_a, dist_acceso_a = grafo.find_nearest_node(pos_ini, max_radius=R_RADIUS)
+    node_b, dist_acceso_b = grafo.find_nearest_node(pos_fin, max_radius=R_RADIUS)
 
     if not node_a or not node_b:
         return (
@@ -101,8 +74,8 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
         )
 
     # Calcular ruta en la calle
-    dist_acceso_a_neta = dist_acceso_a if dist_acceso_a > 5.00 else 0.00
-    dist_acceso_b_neta = dist_acceso_b if dist_acceso_b > 5.00 else 0.00
+    dist_acceso_a_neta = dist_acceso_a if dist_acceso_a > UMB_DESPRECIO else 0.00
+    dist_acceso_b_neta = dist_acceso_b if dist_acceso_b > UMB_DESPRECIO else 0.00
 
     dist_red, path_red = grafo.get_path_length(node_a, node_b)
 
