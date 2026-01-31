@@ -1,17 +1,22 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# (Generados por setup.py)
+# (Generados por main.py)
 dist/
 build/
 *.egg-info/
 *.egg
 
+# Entorno virtual
+venv/
+env/
+.venv/
+
 # Directorio de logs y reportes
 logs/
+reportes/
 *.log
 *.csv
 
