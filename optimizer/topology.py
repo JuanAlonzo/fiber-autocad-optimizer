@@ -48,15 +48,16 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     Retorna: (distancia_total, lista_puntos_para_dibujar, metadata)
     """
     R_RADIUS = get_config("tolerancias.radio_busqueda_acceso", 20.0)
-    UMB_DESPRECIO = get_config("tolerancias.desprecio_poste", 3.0)
     R_SNAP = get_config("tolerancias.radio_snap_equipos", 5.0)
 
     # Identifica Equipos (Inicio y Fin)
-    eq_inicio, d_ini = encontrar_bloque_cercano(p_inicio, lista_bloques, R_SNAP)
-    eq_fin, d_fin = encontrar_bloque_cercano(p_fin, lista_bloques, R_SNAP)
+    eq_inicio, d_ini = encontrar_bloque_cercano(
+        p_inicio, lista_bloques, radio_max=R_SNAP
+    )
+    eq_fin, d_fin = encontrar_bloque_cercano(p_fin, lista_bloques, radio_max=R_SNAP)
 
     if not eq_inicio or not eq_fin:
-        return None, [], "Error: Extremo sin equipo cercano (<2m)"
+        return None, [], f"Error: Extremo sin equipo cercano (<{R_SNAP}m)"
 
     # Conectar a la Red (Grafo)
     # Buscamos el nodo de calle más cercano a cada equipo
@@ -70,20 +71,16 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
         return (
             None,
             [],
-            f"Error: Equipo {eq_inicio['name']} o {eq_fin['name']} aislado de la calle",
+            f"Error: Equipo aislado de la red (<{R_RADIUS}m)",
         )
-
-    # Calcular ruta en la calle
-    dist_acceso_a_neta = dist_acceso_a if dist_acceso_a > UMB_DESPRECIO else 0.00
-    dist_acceso_b_neta = dist_acceso_b if dist_acceso_b > UMB_DESPRECIO else 0.00
 
     dist_red, path_red = grafo.get_path_length(node_a, node_b)
 
     if dist_red is None:
-        return None, [], "Error: Islas"
+        return None, [], "Error: Islas (Red desconectada)"
 
     # Construir resultado
-    dist_total = dist_acceso_a_neta + dist_red + dist_acceso_b_neta
+    dist_total = dist_red
 
     # Armar visualización:
     # Equipo A -> Calle A -> ...Ruta... -> Calle B -> Equipo B
@@ -92,7 +89,8 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     meta = {
         "origen": eq_inicio["name"],
         "destino": eq_fin["name"],
-        "tipo_conexion": f"{eq_inicio['name']}->{eq_fin['name']}",  # Simplificado para demo
+        "tipo_conexion": f"{eq_inicio['name']}->{eq_fin['name']}",
+        "desglose": f"Red: {dist_red:.2f}m (Accesos ignorados: {dist_acceso_a:.2f}m + {dist_acceso_b:.2f}m)",
     }
 
     return dist_total, camino_visual, meta

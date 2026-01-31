@@ -73,83 +73,95 @@ def main():
         pass
 
     count = 0
+
     for i in range(msp.Count):
-        obj = msp.Item(i)
-        if obj.ObjectName == "AcDbPolyline" and obj.Layer.upper() == CAPA_TRAMO:
-            coords = obj.Coordinates
-            if len(coords) < 4:
-                continue  # Mal dibujada
+        try:
+            obj = msp.Item(i)
+            if obj.ObjectName == "AcDbPolyline" and obj.Layer.upper() == CAPA_TRAMO:
+                coords = obj.Coordinates
+                if len(coords) < 4:
+                    continue  # Mal dibujada
 
-            p_start = (coords[0], coords[1])
-            p_end = (coords[-2], coords[-1])  # Último punto
+                p_start = (coords[0], coords[1])
+                p_end = (coords[-2], coords[-1])  # Último punto
 
-            dist_real, ruta_visual, meta = calcular_ruta_completa(
-                p_start, p_end, grafo, bloques
-            )
-
-            if dist_real:
-                count += 1
-
-                cable_m, reserva, tipo_tec = seleccionar_cable(
-                    dist_real, meta["origen"], meta["destino"]
+                dist_real, ruta_visual, meta = calcular_ruta_completa(
+                    p_start, p_end, grafo, bloques
                 )
 
-                logger.info(f"  ✓ {meta['origen']} -> {meta['destino']}")
-                logger.info(
-                    f"   Real: {dist_real:.0f}m | Cable: {cable_m}m | Reserva: {reserva:.0f}m | Tec: {tipo_tec}"
-                )
+                if dist_real:
+                    count += 1
 
-                # Dibujar ruta debug
-                dibujar_debug_offset(msp, ruta_visual, color=1)
+                    cable_m, reserva, tipo_tec = seleccionar_cable(
+                        dist_real, meta["origen"], meta["destino"]
+                    )
 
-                # Etiquetar en dibujo
-                texto = f"{tipo_tec} {cable_m}m | L:{dist_real:.0f}m R:{reserva:.0f}m"
-                insertar_etiqueta_inteligente(msp, ruta_visual, texto)
-                logger.info(f"✓ Tramo OK: {cable_m}m")
+                    logger.info(f"  ✓ {meta['origen']} -> {meta['destino']}")
+                    logger.info(f"    [Diagnóstico] {meta['desglose']}")
+                    logger.info(
+                        f"   Real: {dist_real:.0f}m | Cable: {cable_m}m | Reserva: {reserva:.0f}m | Tec: {tipo_tec}"
+                    )
 
-                # GUARDAR DATO EN MEMORIA
-                datos_reporte.append(
-                    {
-                        "handle": obj.Handle,
-                        "origen": meta["origen"],
-                        "destino": meta["destino"],
-                        "longitud_real": dist_real,
-                        "cable_asignado": cable_m,
-                        "tipo_tecnico": tipo_tec,
-                        "reserva": reserva,
-                        "estado": "OK",
-                    }
-                )
-            else:
-                if isinstance(meta, str):
-                    msg_error = meta
-                    origen_err = "?"
-                    destino_err = "?"
+                    # Dibujar ruta debug
+                    dibujar_debug_offset(msp, ruta_visual, color=1)
+
+                    # Etiquetar en dibujo
+                    texto = (
+                        f"{tipo_tec} {cable_m}m | L:{dist_real:.0f}m R:{reserva:.0f}m"
+                    )
+                    insertar_etiqueta_inteligente(msp, ruta_visual, texto)
+                    logger.info(f"✓ Tramo OK: {cable_m}m")
+
+                    # GUARDAR DATO EN MEMORIA
+                    datos_reporte.append(
+                        {
+                            "handle": obj.Handle,
+                            "origen": meta["origen"],
+                            "destino": meta["destino"],
+                            "longitud_real": dist_real,
+                            "cable_asignado": cable_m,
+                            "tipo_tecnico": tipo_tec,
+                            "reserva": reserva,
+                            "estado": "OK",
+                        }
+                    )
                 else:
-                    msg_error = meta.get("error", "Error desconocido")
-                    origen_err = meta.get("origen", "?")
-                    destino_err = meta.get("destino", "?")
-                logger.warning(f" X Error en tramo: {msg_error}")
+                    if isinstance(meta, str):
+                        msg_error = meta
+                        origen_err = "?"
+                        destino_err = "?"
+                    else:
+                        msg_error = meta.get("error", "Error desconocido")
+                        origen_err = meta.get("origen", "?")
+                        destino_err = meta.get("destino", "?")
+                    logger.warning(f" X Error en tramo: {msg_error}")
 
-                try:
-                    doc.Layers.Add("ERRORES_TOPOLOGIA").Color = 1
-                except Exception:
-                    pass
-                dibujar_circulo_error(msp, p_start, radio=5)
+                    try:
+                        doc.Layers.Add("ERRORES_TOPOLOGIA").Color = 1
+                    except Exception:
+                        pass
+                    dibujar_circulo_error(msp, p_start, radio=5)
 
-                # GUARDAR ERROR TAMBIÉN
-                datos_reporte.append(
-                    {
-                        "handle": obj.Handle,
-                        "origen": origen_err,
-                        "destino": destino_err,
-                        "longitud_real": 0,
-                        "cable_asignado": "N/A",
-                        "tipo_tecnico": "ERROR",
-                        "reserva": 0,
-                        "estado": f"ERROR: {msg_error}",  # Guardar el mensaje de error
-                    }
-                )
+                    # GUARDAR ERROR TAMBIÉN
+                    datos_reporte.append(
+                        {
+                            "handle": obj.Handle,
+                            "origen": origen_err,
+                            "destino": destino_err,
+                            "longitud_real": 0,
+                            "cable_asignado": "N/A",
+                            "tipo_tecnico": "ERROR",
+                            "reserva": 0,
+                            "estado": f"ERROR: {msg_error}",  # Guardar el mensaje de error
+                        }
+                    )
+
+        except Exception:
+            logger.exception(f"Error CRITICO procesando entidad: {i}")
+            print(
+                f"(!) Error saltado en tramo índice {i}. Revisa el log para detalles."
+            )
+            continue
 
     logger.info("\nExportando reporte CSV...")
     exportar_csv(datos_reporte)

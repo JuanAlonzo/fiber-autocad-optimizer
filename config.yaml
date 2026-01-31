@@ -19,7 +19,6 @@ etiquetas:
 tolerancias:
   snap_grafo_vial: 0.1 # Fusión de nodos cercanos en la calle
   radio_busqueda_acceso: 20.0 # Máxima distancia para buscar una calle desde un equipo
-  desprecio_poste: 3.0 # Si el equipo está a menos de Xm de la calle, distancia=0
   radio_snap_equipos: 5.0 # Distancia para asociar polilínea a equipo (antes estaba en 2.0 en otro lado)
 
 # Configuración de rutas y tolerancias
