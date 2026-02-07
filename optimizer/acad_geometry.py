@@ -1,3 +1,7 @@
+"""
+Gestión de geometría y topología del plano de AutoCAD para optimización de rutas.
+"""
+
 from .utils_math import distancia_euclidiana
 from .config_loader import get_config
 

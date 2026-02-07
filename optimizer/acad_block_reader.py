@@ -3,18 +3,7 @@ Lector de bloques avanzado usando win32com
 Permite leer atributos y propiedades dinámicas.
 """
 
-import win32com.client
-from .feedback_logger import logger
-
-
-def get_acad_com():
-    """Obtiene la instancia COM de AutoCAD."""
-    try:
-        acad = win32com.client.Dispatch("AutoCAD.Application")
-        return acad
-    except Exception as e:
-        logger.debug(f"No se pudo conectar vía COM: {e}")
-        return None
+from .acad_tools import get_acad_com
 
 
 def get_block_attributes(obj):

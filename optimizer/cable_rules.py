@@ -55,9 +55,9 @@ def seleccionar_cable(longitud, nombre_origen, nombre_destino):
     if not config_prod:
         raise ValueError(f"Configuracion de cable '{id_producto}' no encontrado.")
 
-    nombre_tecnico = config_prod.get("nombre_tecnico", "UNK")
+    nombre_tecnico = config_prod.get("nombre_tecnico", "UNKNOWN_CABLE")
     disponibles = sorted(config_prod["longitudes"])
-    reserva_minima = config_prod.get("reserva_minima", 10)
+    reserva_minima = config_prod.get("reserva_minima", 15)
 
     # Seleccion matematica
     cable_seleccionado = None
