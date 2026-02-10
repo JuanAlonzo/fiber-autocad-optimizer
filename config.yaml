@@ -7,15 +7,30 @@ general:
   umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
   tolerance: 0.01 # Tolerancia para comparaciones geométricas
 
+# Configuración del sistema y visualización
+sistema:
+  unidades: "metros"
+  usar_logger_archivo: true
+  usar_logger_consola: true
+
+# Configuración de visualización y estilos
 visualizacion:
   color_ok: 3 # Verde
   color_error: 1 # Rojo
   color_debug: 6 # Magenta
   color_grafo: 8 # Gris
+  radio_nodo_debug: 0.2 # Tamaño de los puntos del grafo debug
+  radio_error: 5.0 # Radio del círculo rojo de error
+  color_error_layer: 1 # Capa para círculos de error
 
+# Configuración de etiquetas y texto en el plano
 etiquetas:
   offset_y: 1.5 # Offset vertical para etiquetas de rutas
+  altura_texto: 1.0 # Tamaño de letra en el plano
+  capa_texto: "0" # Capa por defecto si falla la debug
+  alineacion: 13 # 13 = Bottom Center en AutoCAD
 
+# Configuración de capas y estilos para el grafo vial
 tolerancias:
   snap_grafo_vial: 0.1 # Fusión de nodos cercanos en la calle
   radio_busqueda_acceso: 20.0 # Máxima distancia para buscar una calle desde un equipo

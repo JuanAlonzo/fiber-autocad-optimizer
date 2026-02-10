@@ -1,5 +1,7 @@
 """
-Registra eventos y errores en un archivo de log
+Módulo de Logging (Feedback).
+Configura el sistema de registro de eventos y errores.
+Guarda un historial detallado en la carpeta 'logs/' y muestra resumen en consola.
 """
 
 from datetime import datetime
@@ -7,8 +9,16 @@ import logging
 import os
 
 
-def setup_logger():
-    """Configura el logger global."""
+def setup_logger() -> logging.Logger:
+    """
+    Configura y devuelve la instancia global del logger.
+
+    - FileHandler: Guarda TODO (DEBUG) en logs/ejecucion_YYYYMMDD.log con encoding utf-8.
+    - StreamHandler: Muestra INFO o superior en la consola (sin fecha para limpieza).
+
+    Returns:
+        logging.Logger: Instancia configurada lista para usar.
+    """
     os.makedirs("logs", exist_ok=True)
     log_filename = f"logs/ejecucion_{datetime.now().strftime('%Y%m%d')}.log"
 

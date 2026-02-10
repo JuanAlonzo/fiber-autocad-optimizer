@@ -1,25 +1,40 @@
 """
-Cargador centralizado de configuración
+Módulo de Configuración.
+Carga y gestiona el archivo YAML de configuración centralizada.
+Soporta ejecución tanto como script (.py) como ejecutable congelado (.exe).
 """
 
 import yaml
 import os
 import sys
+from typing import Any, Optional
 from .feedback_logger import logger
 
-_config = None
+_config: Optional[dict] = None
 
 
-def get_base_path():
-    """Devuelve la ruta base del proyecto."""
+def get_base_path() -> str:
+    """
+    Devuelve la ruta base del proyecto, adaptándose al entorno de ejecución.
+
+    Returns:
+        str: Ruta del directorio base.
+             - En modo .exe: La carpeta donde está el ejecutable.
+             - En modo .py: La carpeta 'optimizer'.
+    """
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     else:
         return os.path.dirname(os.path.abspath(__file__))
 
 
-def get_config_path():
-    """Calcula la ruta absoluta al config.yaml"""
+def get_config_path() -> str:
+    """
+    Calcula la ruta absoluta al archivo config.yaml.
+
+    Returns:
+        str: Ruta completa al archivo de configuración.
+    """
     base_path = get_base_path()
 
     if getattr(sys, "frozen", False):
@@ -28,8 +43,11 @@ def get_config_path():
         return os.path.join(base_path, "..", "config.yaml")
 
 
-def load_config():
-    """Carga el YAML en memoria."""
+def load_config() -> None:
+    """
+    Carga el contenido del archivo YAML en memoria (variable global _config).
+    Si falla, inicializa una configuración vacía y loguea el error crítico.
+    """
     global _config
     ruta = get_config_path()
 
@@ -46,12 +64,22 @@ def load_config():
         _config = {}
 
 
-def get_config(key_path, default=None):
+def get_config(key_path: str, default: Any = None) -> Any:
     """
-    Obtiene un valor de configuracion.
+    Obtiene un valor de la configuración usando notación de puntos.
+
+    Args:
+        key_path (str): Clave jerárquica (ej. 'rutas.capa_red_vial').
+        default (Any): Valor a devolver si la clave no existe o falla la carga.
+
+    Returns:
+        Any: El valor configurado o el default.
     """
     if _config is None:
         load_config()
+
+    if not _config:
+        return default
 
     keys = key_path.split(".")
     value = _config

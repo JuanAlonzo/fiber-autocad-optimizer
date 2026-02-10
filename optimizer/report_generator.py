@@ -1,14 +1,25 @@
 """
-Genera reportes en formato CSV
+Módulo de Reportes.
+Genera archivos CSV compatibles con Excel a partir de los datos procesados.
 """
 
 import csv
 import os
 from datetime import datetime
+from typing import List, Dict, Any, Optional
 from .feedback_logger import logger
 
 
-def exportar_csv(datos, nombre_archivo=None):
+def exportar_csv(
+    datos: List[Dict[str, Any]], nombre_archivo: Optional[str] = None
+) -> None:
+    """
+    Exporta una lista de diccionarios a un archivo CSV.
+
+    Args:
+        datos (List[Dict[str, Any]]): Lista de tramos procesados (diccionarios).
+        nombre_archivo (Optional[str]): Ruta personalizada. Si es None, genera una automática en 'reportes/'.
+    """
     if not datos:
         logger.warning("No hay datos para exportar.")
         return
@@ -35,25 +46,24 @@ def exportar_csv(datos, nombre_archivo=None):
     ]
 
     try:
-        with open(nombre_archivo, mode="w", newline="", encoding="utf-8") as f:
+        with open(nombre_archivo, mode="w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
             writer.writerow(encabezados)
 
             for d in datos:
                 writer.writerow(
                     [
-                        d["handle"],
-                        d["origen"],
-                        d["destino"],
-                        f"{d['longitud_real']:.2f}",
-                        d["cable_asignado"],
-                        d["tipo_tecnico"],
-                        f"{d['reserva']:.2f}",
-                        d["estado"],
+                        d.get("handle", ""),
+                        d.get("origen", ""),
+                        d.get("destino", ""),
+                        f"{d.get('longitud_real', 0):.2f}",
+                        d.get("cable_asignado", ""),
+                        d.get("tipo_tecnico", ""),
+                        f"{d.get('reserva', 0):.2f}",
+                        d.get("estado", ""),
                     ]
                 )
         logger.info(f"Reporte exportado en: {nombre_archivo}")
 
     except Exception as e:
         logger.error(f"Error al exportar CSV: {e}")
-        return

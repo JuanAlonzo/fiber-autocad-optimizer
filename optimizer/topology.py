@@ -4,6 +4,7 @@ Módulo de Topología: Identifica qué conecta cada tramo en el espacio.
 
 import math
 from .config_loader import get_config
+from .feedback_logger import logger
 
 
 def obtener_puntos_extremos(poly_obj):
@@ -57,6 +58,11 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     eq_fin, d_fin = encontrar_bloque_cercano(p_fin, lista_bloques, radio_max=R_SNAP)
 
     if not eq_inicio or not eq_fin:
+        txt_d_ini = f"{d_ini:.1f}m" if d_ini is not None else "N/A"
+        txt_d_fin = f"{d_fin:.1f}m" if d_fin is not None else "N/A"
+        logger.debug(
+            f"Fallo snap equipos: Ini={eq_inicio['name'] if eq_inicio else 'None'} ({txt_d_ini}), Fin={eq_fin['name'] if eq_fin else 'None'} ({txt_d_fin})"
+        )
         return None, [], f"Error: Extremo sin equipo cercano (<{R_SNAP}m)"
 
     # Conectar a la Red (Grafo)
@@ -68,6 +74,9 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     node_b, dist_acceso_b = grafo.find_nearest_node(pos_fin, max_radius=R_RADIUS)
 
     if not node_a or not node_b:
+        logger.debug(
+            f"Equipo aislado de calle: {eq_inicio['name']} (DistRed: {dist_acceso_a}), {eq_fin['name']} (DistRed: {dist_acceso_b})"
+        )
         return (
             None,
             [],
@@ -77,6 +86,9 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     dist_red, path_red = grafo.get_path_length(node_a, node_b)
 
     if dist_red is None:
+        logger.warning(
+            f"ISLAS DETECTADAS: No hay camino entre nodos {node_a} y {node_b}"
+        )
         return None, [], "Error: Islas (Red desconectada)"
 
     # Construir resultado
