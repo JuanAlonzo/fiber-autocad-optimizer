@@ -11,6 +11,7 @@ from typing import Any, Optional
 from .feedback_logger import logger
 
 _config: Optional[dict] = None
+_current_config_path: str = "Automatico"
 
 
 def get_base_path() -> str:
@@ -43,25 +44,29 @@ def get_config_path() -> str:
         return os.path.join(base_path, "..", "config.yaml")
 
 
-def load_config() -> None:
+def load_config(specific_path: Optional[str] = None) -> bool:
     """
     Carga el contenido del archivo YAML en memoria (variable global _config).
     Si falla, inicializa una configuración vacía y loguea el error crítico.
     """
-    global _config
-    ruta = get_config_path()
+    global _config, _current_config_path
+
+    ruta = specific_path if specific_path else get_config_path()
+    _current_config_path = ruta
 
     try:
         with open(ruta, "r", encoding="utf-8") as file:
             _config = yaml.safe_load(file)
+        logger.info(f"Configuracion cargada desde {ruta}.")
+        return True
     except FileNotFoundError:
-        logger.critical(
-            f"Error critico: No se encontro el archivo 'config.yaml' en: {ruta}."
-        )
+        logger.critical(f"No se encontró el archivo en: {ruta}.")
         _config = {}
+        return False
     except Exception as e:
-        logger.critical(f"Error critico al cargar la configuracion: {e}")
+        logger.critical(f"Error al cargar la configuracion: {e}")
         _config = {}
+        return False
 
 
 def get_config(key_path: str, default: Any = None) -> Any:

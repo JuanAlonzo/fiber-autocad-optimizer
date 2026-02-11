@@ -1,6 +1,6 @@
 import unittest
 import win32com.client
-from optimizer.acad_tools import get_acad_com
+from optimizer.acad_interface import get_acad_com
 
 
 class TestIntegracionCAD(unittest.TestCase):

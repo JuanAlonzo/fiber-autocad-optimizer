@@ -45,11 +45,12 @@ rutas:
   umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste)
   offset_visual_debug: 0.5 # Desplazamiento de la línea dibujada
 
+# Catálogo de equipos y sus relaciones para la topología
 equipos:
-  xbox: ["X_BOX_P", "X_BOX_EXISTENTE"] # Nombre actual, relacionados
+  xbox: ["X_BOX_P", "X_BOX_EXISTENTE"]
   hbox: ["HBOX_3.5P", "HBOX_4.0P"]
-  fat_int: ["FAT_INT_3.0_P", "FAT_INT_2.0_P"]
-  fat_final: ["FAT_FINAL_3.0_P"]
+  fat_int: ["FAT_INT_3.0_P", "FAT_INT_3.5_P"]
+  fat_final: ["FAT_FINAL_3.0_P", "FAT_FINAL_3.5_P"]
   fat_out: ["FAT_OUT_FIN_P", "FAT_OUT_EXP"]
 
 # Catálogo de cables y reglas topológicas
