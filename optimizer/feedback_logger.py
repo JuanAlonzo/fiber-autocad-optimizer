@@ -20,7 +20,7 @@ def setup_logger() -> logging.Logger:
         logging.Logger: Instancia configurada lista para usar.
     """
     os.makedirs("logs", exist_ok=True)
-    log_filename = f"logs/ejecucion_{datetime.now().strftime('%Y%m%d')}.log"
+    log_filename = f"logs/ejecucion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
     logger = logging.getLogger("FiberOptimizer")
     logger.setLevel(logging.DEBUG)  # Captura todo
