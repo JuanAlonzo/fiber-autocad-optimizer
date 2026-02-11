@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from .feedback_logger import logger
+from .feedback_logger import get_base_path
 
 
 def exportar_csv(
@@ -25,14 +26,17 @@ def exportar_csv(
         return
 
     if nombre_archivo is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nombre_archivo = f"reportes/reporte_tramos_{timestamp}.csv"
+        base_path = get_base_path()
+        report_dir = os.path.join(base_path, "reportes")
 
-    try:
-        os.makedirs(os.path.dirname(nombre_archivo), exist_ok=True)
-    except Exception as e:
-        logger.error(f"Error al crear directorio: {e}")
-        return
+        try:
+            os.makedirs(report_dir, exist_ok=True)
+        except Exception as e:
+            logger.error(f"Error al crear directorio: {e}")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_archivo = os.path.join(report_dir, f"reporte_tramos_{timestamp}.csv")
 
     encabezados = [
         "handle",
@@ -46,6 +50,10 @@ def exportar_csv(
     ]
 
     try:
+        dir_padre = os.path.dirname(nombre_archivo)
+        if dir_padre:
+            os.makedirs(dir_padre, exist_ok=True)
+
         with open(nombre_archivo, mode="w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
             writer.writerow(encabezados)
