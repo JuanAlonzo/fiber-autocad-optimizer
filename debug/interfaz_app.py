@@ -8,8 +8,8 @@ import time
 class FiberOptimizerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Fiber AutoCAD Optimizer v2.5")
-        self.root.geometry("500x600")
+        self.root.title("Fiber AutoCAD Optimizer v1.0 - Debug Interface")
+        self.root.geometry("500x700")
         self.root.resizable(False, False)
 
         # --- ESTILOS ---
@@ -46,7 +46,7 @@ class FiberOptimizerApp:
         ttk.Label(info_frame, text="Perfil de Usuario", style="Header.TLabel").pack(
             anchor="w"
         )
-        ttk.Label(info_frame, text="Diseñador: Juan Alonzo").pack(anchor="w")
+        ttk.Label(info_frame, text="PC: HFC-01").pack(anchor="w")
         ttk.Label(
             info_frame, text="Licencia: PRO - Expira 2026", foreground="green"
         ).pack(anchor="w")
@@ -68,11 +68,19 @@ class FiberOptimizerApp:
         frame.pack(fill=tk.X, pady=10)
 
         self.var_grafo = tk.BooleanVar()
+        self.var_layer = tk.BooleanVar(value=True)
+        self.var_label = tk.BooleanVar()
         self.var_errores = tk.BooleanVar(value=True)
         self.var_csv = tk.BooleanVar(value=True)
 
         ttk.Checkbutton(
             frame, text="Dibujar Grafo Completo (Lento)", variable=self.var_grafo
+        ).pack(anchor="w")
+        ttk.Checkbutton(
+            frame, text="Cambiar capas (A polilinea TRAMO)", variable=self.var_layer
+        ).pack(anchor="w")
+        ttk.Checkbutton(
+            frame, text="Mostrar solo etiquetas", variable=self.var_label
         ).pack(anchor="w")
         ttk.Checkbutton(
             frame,

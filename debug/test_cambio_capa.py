@@ -1,40 +1,41 @@
-import win32com.client
+from optimizer import get_acad_com
 
 
 def main():
     print("--- TEST DE MUTACIÓN DE CAPAS ---")
-    acad = win32com.client.Dispatch("AutoCAD.Application")
+    acad = get_acad_com()
     doc = acad.ActiveDocument
     msp = doc.ModelSpace
 
     # Capa origen
-    C_ORIGEN = "CAMBIO_CAPA"
+    C_ORIGEN = "TRAMO"
 
     # Capas destino (Crearlas si no existen)
     C_CORTA = "CABLE PRECONECT 2H SM (100M)"  # < 150m
     C_LARGA = "CABLE PRECONECT 2H SM (200M)"  # > 150m
 
-    # try:
-    #     doc.Layers.Add(C_CORTA).Color = 2  # Amarillo
-    #     doc.Layers.Add(C_LARGA).Color = 4  # Cian
-    # except Exception:
-    #     pass
-
     count = 0
     for i in range(msp.Count):
-        obj = msp.Item(i)
-        if obj.ObjectName == "AcDbPolyline" and obj.Layer.upper() == C_ORIGEN:
-            longitud = obj.Length
+        try:
+            obj = msp.Item(i)
+            if obj.ObjectName == "AcDbPolyline" and obj.Layer.upper() == C_ORIGEN:
+                longitud = obj.Length
 
-            # Lógica simple de decisión
-            if longitud > 150.0:
-                obj.Layer = C_LARGA
-                print(f"Handle {obj.Handle}: {longitud:.1f}m -> TRONCAL")
-            else:
-                obj.Layer = C_CORTA
-                print(f"Handle {obj.Handle}: {longitud:.1f}m -> DISTRIBUCION")
+                # Lógica simple de decisión
+                if longitud > 150.0:
+                    obj.Layer = C_LARGA
+                    print(f"Handle {obj.Handle}: {longitud:.1f}m -> TRONCAL")
+                else:
+                    obj.Layer = C_CORTA
+                    print(f"Handle {obj.Handle}: {longitud:.1f}m -> DISTRIBUCION")
 
-            count += 1
+                obj.ConstantWidth = 0.5
+                obj.LinetypeScale = 4
+
+                count += 1
+        except Exception as e:
+            print(f"Error procesando objeto index {i}: {e}")
+            continue
 
     print(f"Se actualizaron {count} elementos.")
     # Refrescar pantalla de AutoCAD
