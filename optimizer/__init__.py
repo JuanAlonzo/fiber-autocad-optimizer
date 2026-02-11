@@ -15,6 +15,7 @@ from .cable_rules import seleccionar_cable
 from .config_loader import get_config
 from .feedback_logger import logger
 from .report_generator import exportar_csv
+from .security import verificar_entorno
 from .topology import calcular_ruta_completa
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     dibujar_circulo_error,
     dibujar_grafo_completo,
     exportar_csv,
+    verificar_entorno,
     calcular_ruta_completa,
 ]

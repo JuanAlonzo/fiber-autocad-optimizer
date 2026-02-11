@@ -10,15 +10,14 @@ from optimizer import (
     calcular_ruta_completa,
     get_config,
     exportar_csv,
+    verificar_entorno,
     logger,
 )
-
-from debug.test_app_security import verificar_seguridad
 
 
 def main():
     # Seguridad: Verificacion de entorno de ejecucion
-    verificar_seguridad()
+    verificar_entorno()
     logger.info("--- INICIANDO OPTIMIZADOR HÍBRIDO ---")
 
     acad = get_acad_com()
