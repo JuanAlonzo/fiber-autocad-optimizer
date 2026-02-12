@@ -10,22 +10,22 @@ from optimizer import (
     get_acad_com,
     seleccionar_cable,
     dibujar_debug_offset,
-    insertar_etiqueta_inteligente,
     dibujar_circulo_error,
     dibujar_grafo_completo,
     calcular_ruta_completa,
+    insertar_etiqueta_reserva,
+    insertar_etiqueta_tramo,
     get_config,
     load_config,
     exportar_csv,
     herramienta_inventario_rapido,
     herramienta_visualizar_extremos,
-    logger,
-)
-
-from optimizer.tools import (
     herramienta_asociar_hubs,
     herramienta_analizar_fat,
     garantizar_capa_existente,
+    ASI,
+    SysLayers,
+    logger,
 )
 
 if TYPE_CHECKING:
@@ -137,10 +137,10 @@ class FiberController:
 
             # Preparacion de capas
             self.view.update_status("Verificando capas...", 8)
-            capa_debug = get_config("rutas.capa_debug", "DEBUG_RUTAS_CALCULADAS")
-            garantizar_capa_existente(doc, capa_debug, color_id=6)  # Magenta
-
-            garantizar_capa_existente(doc, "ERRORES_TOPOLOGIA", color_id=1)  # Rojo
+            garantizar_capa_existente(doc, SysLayers.DEBUG_RUTAS, color_id=ASI.MAGENTA)
+            garantizar_capa_existente(doc, SysLayers.ERRORES, color_id=ASI.ROJO)
+            garantizar_capa_existente(doc, SysLayers.TEXTO_TRAMOS, color_id=ASI.AZUL)
+            garantizar_capa_existente(doc, SysLayers.TEXTO_RESERVAS, color_id=ASI.CYAN)
 
             # 1. GRAFO
             self.view.update_status("Analizando Red...", 10)
@@ -209,8 +209,12 @@ class FiberController:
                         if opts["ruta_debug"]:
                             dibujar_debug_offset(msp, ruta)
                         if opts["etiquetas"]:
-                            txt = f"{tipo} {cable}m | L:{dist:.0f}m R:{res:.0f}m"
-                            insertar_etiqueta_inteligente(msp, ruta, txt)
+                            # Etiqueta Central
+                            txt_tramo = f"{tipo} {int(cable)}m"
+                            insertar_etiqueta_tramo(msp, ruta, txt_tramo)
+                            # Etiqueta de Reserva
+                            punto_fin = ruta[-1]
+                            insertar_etiqueta_reserva(msp, punto_fin, res)
                         if opts["capas"]:
                             try:
                                 # Leer prefijo del config

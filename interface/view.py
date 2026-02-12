@@ -160,9 +160,11 @@ class FiberUI:
         frame.columnconfigure(2, weight=1)
 
         # Botones conectados al controlador
-        ttk.Button(frame, text="Visualizar Grafo", state="disabled").grid(
-            row=0, column=0, **opts
-        )
+        ttk.Button(
+            frame,
+            text="Visualizar Grafo",
+            state="disabled",
+        ).grid(row=0, column=0, **opts)
 
         ttk.Button(
             frame,
