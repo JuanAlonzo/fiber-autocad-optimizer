@@ -6,6 +6,9 @@ import math
 from .config_loader import get_config
 from .feedback_logger import logger
 
+R_RADIUS = get_config("tolerancias.radio_busqueda_acceso", 20.0)
+R_SNAP = get_config("tolerancias.radio_snap_equipos", 5.0)
+
 
 def obtener_puntos_extremos(poly_obj):
     """
@@ -48,8 +51,6 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     Calcula la ruta completa (lista de puntos) entre dos coordenadas.
     Retorna: (distancia_total, lista_puntos_para_dibujar, metadata)
     """
-    R_RADIUS = get_config("tolerancias.radio_busqueda_acceso", 20.0)
-    R_SNAP = get_config("tolerancias.radio_snap_equipos", 5.0)
 
     # Identifica Equipos (Inicio y Fin)
     eq_inicio, d_ini = encontrar_bloque_cercano(
@@ -91,11 +92,7 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
         )
         return None, [], "Error: Islas (Red desconectada)"
 
-    # Construir resultado
-    dist_total = dist_red
-
-    # Armar visualización:
-    # Equipo A -> Calle A -> ...Ruta... -> Calle B -> Equipo B
+    # Equipo A -> Punto A -> ...Ruta... -> Punto B -> Equipo B
     camino_visual = [pos_ini] + path_red + [pos_fin]
 
     meta = {
@@ -105,4 +102,4 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
         "desglose": f"Red: {dist_red:.2f}m (Accesos ignorados: {dist_acceso_a:.2f}m + {dist_acceso_b:.2f}m)",
     }
 
-    return dist_total, camino_visual, meta
+    return dist_red, camino_visual, meta

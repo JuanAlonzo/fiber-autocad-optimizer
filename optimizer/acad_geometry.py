@@ -6,8 +6,8 @@ Realiza cálculos de ruta (Pathfinding) y snaps geométricos.
 
 from typing import Tuple, List, Dict, Optional, Any
 from .utils_math import distancia_euclidiana
-from .config_loader import get_config
 from .feedback_logger import logger
+from .constants import Geometry
 
 Point2D = Tuple[float, float]
 
@@ -17,7 +17,8 @@ def point_to_key(point: Point2D, tolerance: float) -> Tuple[float, float]:
     Normaliza una coordenada aplicando un redondeo (snap) basado en tolerancia.
     Permite que puntos infinitesimalmente cercanos se consideren el mismo nodo.
     """
-    tolerance = get_config("general.tolerance", 0.01)
+    if tolerance == 0:
+        return point
     x = round(point[0] / tolerance) * tolerance
     y = round(point[1] / tolerance) * tolerance
     return (x, y)
@@ -73,7 +74,7 @@ class NetworkGraph:
         self.adj[k2].append((k1, dist))
 
     def find_nearest_node(
-        self, point: Point2D, max_radius: float = 5.0
+        self, point: Point2D, max_radius: float = Geometry.RADIO_SNAP_DEFECTO
     ) -> Tuple[Optional[Tuple[float, float]], Optional[float]]:
         """
         Encuentra el nodo del grafo más cercano a un punto dado (ej. un Equipo).

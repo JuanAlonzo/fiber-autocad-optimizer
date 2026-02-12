@@ -7,7 +7,7 @@ Maneja la rotación y posición automática basada en la geometría del tramo.
 from typing import Optional, Tuple, Any, List
 import win32com.client
 import pythoncom
-from .config_loader import get_config
+from .constants import ASI, Geometry, SysLayers
 from .feedback_logger import logger
 from .utils_math import (
     obtener_angulo_legible,
@@ -16,51 +16,86 @@ from .utils_math import (
 )
 
 
-def insertar_etiqueta_inteligente(
+def insertar_etiqueta_tramo(
     msp: Any,
     ruta_puntos: List[Tuple[float, float]],
     texto: str,
     offset: Optional[float] = None,
+    capa: str = SysLayers.TEXTO_TRAMOS,
 ) -> None:
     """
-    Calcula la posición y rotación ideal para un texto y lo inserta en AutoCAD.
-    El texto se alinea paralelo al segmento central de la polilínea.
-
-    Args:
-        msp (Any): ModelSpace.
-        ruta_puntos (List[Tuple[float, float]]): Puntos que forman el tramo.
-        texto (str): Contenido de la etiqueta.
-        offset (Optional[float]): Distancia de separación perpendicular a la línea.
+    Inserta la etiqueta principal en el centro del tramo (Tipo y Longitud).
+    Ejemplo: "2H SM 150m"
     """
     if len(ruta_puntos) < 2:
         return
 
     if offset is None:
-        offset = get_config("etiquetas.offset_y", 0.5)
+        offset = 1.0  # Valor por defecto razonable si no se configura
 
-    # Tomar el segmento del medio
+    # 1. Calcular posición en el segmento central
     idx = len(ruta_puntos) // 2
-    p1 = ruta_puntos[idx]  # (x, y)
-    # Intentamos tomar el siguiente punto, o el anterior si estamos al final
+    p1 = ruta_puntos[idx]
+    # Intentar tomar el siguiente, o el anterior si es el último
     p2 = ruta_puntos[idx + 1] if idx + 1 < len(ruta_puntos) else ruta_puntos[idx - 1]
 
-    # Lógica vectorial para ángulo y offset
     mid_pt = obtener_punto_medio(p1, p2)
     vec_off = obtener_vectores_offset(p1, p2, offset)
     angulo = obtener_angulo_legible(p1, p2)
 
-    # Coordenada Z explícita (0.0) requerida por AutoCAD
+    # Posición final (X, Y, Z=0)
     pos_final = (mid_pt[0] + vec_off[0], mid_pt[1] + vec_off[1], 0.0)
 
     try:
         ins_pt = win32com.client.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_R8, pos_final
         )
-        txt_obj = msp.AddText(texto, ins_pt, get_config("etiquetas.altura_texto", 1.0))
+
+        # Crear texto
+        txt_obj = msp.AddText(texto, ins_pt, Geometry.TEXT_HEIGHT)
         txt_obj.Rotation = angulo
-        txt_obj.Alignment = get_config("etiquetas.alineacion", 13)
+        txt_obj.Alignment = Geometry.TEXT_ALIGNMENT_CENTER
         txt_obj.TextAlignmentPoint = ins_pt
-        txt_obj.Layer = get_config("etiquetas.capa_texto", "0")
-        txt_obj.Color = get_config("visualizacion.color_ok", 3)  # Verde
+
+        # Asignar propiedades
+        txt_obj.Layer = capa
+        txt_obj.Color = ASI.MAGENTA
+
     except Exception as e:
-        logger.error(f"Error al insertar etiqueta: {e}")
+        logger.error(f"Error al etiquetar tramo: {e}")
+
+
+def insertar_etiqueta_reserva(
+    msp: Any,
+    punto_destino: Tuple[float, float],
+    reserva: float,
+    capa: str = SysLayers.TEXTO_RESERVAS,
+) -> None:
+    """
+    Inserta un texto pequeño con la reserva cerca del equipo destino.
+    Ejemplo: "Reserva:15m"
+    """
+    if reserva <= 0:
+        return
+
+    texto = f"Reserva:{int(reserva)}m"
+
+    # Offset fijo para que no caiga encima del bloque (ajustable)
+    desplazamiento_x = 2.0
+    desplazamiento_y = 2.0
+
+    pos = (
+        punto_destino[0] + desplazamiento_x,
+        punto_destino[1] + desplazamiento_y,
+        0.0,
+    )
+
+    try:
+        ins_pt = win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, pos)
+
+        txt_obj = msp.AddText(texto, ins_pt, 0.8)
+        txt_obj.Color = ASI.CYAN
+        txt_obj.Layer = capa
+
+    except Exception as e:
+        logger.error(f"Error al etiquetar reserva: {e}")

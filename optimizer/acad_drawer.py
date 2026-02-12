@@ -7,16 +7,8 @@ No realiza cálculos de ruta, solo visualización.
 from typing import List, Tuple, Optional, Any
 import win32com.client
 import pythoncom
-from .config_loader import get_config
+from .constants import ASI, SysLayers, Geometry
 from .feedback_logger import logger
-
-DISTANCE = get_config("rutas.offset_visual_debug", 0.5)
-LAYER_DEBUG = get_config("rutas.capa_debug", "DEBUG_RUTAS")
-COLOR_ERROR = get_config("visualizacion.color_error", 1)  # Rojo
-COLOR_DEBUG = get_config("visualizacion.color_debug", 6)  # Magenta
-RADIO_ERROR = get_config("visualizacion.radio_error", 5.0)
-COLOR_GRAFO = get_config("visualizacion.color_grafo", 8)  # Gris
-RADIO_NODO = get_config("visualizacion.radio_nodo_debug", 0.2)
 
 
 def dibujar_debug_offset(
@@ -35,7 +27,7 @@ def dibujar_debug_offset(
         return
 
     if color is None:
-        color = COLOR_DEBUG
+        color = ASI.MAGENTA
 
     # Aplanar lista de puntos para el formato que exige win32com
     vertices = []
@@ -48,13 +40,13 @@ def dibujar_debug_offset(
 
         # Intentar realizar offset geométrico
         try:
-            objs = pline.Offset(DISTANCE)
+            objs = pline.Offset(Geometry.OFFSET_RUTAS)
             pline.Delete()
             final_obj = objs[0]
         except Exception:
             final_obj = pline  # Fallback si no se puede hacer offset
 
-        final_obj.Layer = LAYER_DEBUG
+        final_obj.Layer = SysLayers.DEBUG_RUTAS
         final_obj.Color = color
     except Exception as e:
         logger.debug(f"Error al dibujar ruta debug: {e}")
@@ -64,7 +56,7 @@ def dibujar_circulo_error(
     msp: Any,
     punto: Tuple[float, float],
     radio: Optional[float] = None,
-    capa: str = "ERRORES_TOPOLOGIA",
+    capa: str = SysLayers.ERRORES,
 ) -> None:
     """
     Dibuja un círculo rojo en el plano para marcar una inconsistencia topológica.
@@ -76,13 +68,13 @@ def dibujar_circulo_error(
         capa (str): Nombre de la capa donde dibujar.
     """
     if radio is None:
-        radio = RADIO_ERROR
+        radio = Geometry.RADIO_ERROR
     try:
         center = win32com.client.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_R8, (punto[0], punto[1], 0)
         )
         circulo = msp.AddCircle(center, radio)
-        circulo.Color = COLOR_ERROR
+        circulo.Color = ASI.ROJO
         circulo.Layer = capa
     except Exception:
         pass
@@ -91,8 +83,8 @@ def dibujar_circulo_error(
 def dibujar_grafo_completo(
     msp: Any,
     grafo: Any,
-    capa_nodos: str = "DEBUG_GRAFO_NODOS",
-    capa_aristas: str = "DEBUG_GRAFO_ARISTAS",
+    capa_nodos: str = SysLayers.DEBUG_NODOS,
+    capa_aristas: str = SysLayers.DEBUG_ARISTAS,
 ) -> None:
     """
     Dibuja la representación visual completa del grafo de red vial.
@@ -124,7 +116,7 @@ def dibujar_grafo_completo(
             )
             linea = msp.AddLine(start, end)
             linea.Layer = capa_aristas
-            linea.Color = COLOR_GRAFO
+            linea.Color = ASI.CYAN
             dibujados.add(edge_key)
 
     # Dibujar nodos
@@ -132,6 +124,6 @@ def dibujar_grafo_completo(
         center = win32com.client.VARIANT(
             pythoncom.VT_ARRAY | pythoncom.VT_R8, (coords[0], coords[1], 0)
         )
-        circulo = msp.AddCircle(center, RADIO_NODO)
+        circulo = msp.AddCircle(center, Geometry.RADIO_NODO)
         circulo.Layer = capa_nodos
-        circulo.Color = 4  # Cyan
+        circulo.Color = ASI.CYAN

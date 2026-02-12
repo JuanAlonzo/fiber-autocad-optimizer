@@ -17,7 +17,6 @@ def obtener_grupo_equipo(nombre_bloque: str) -> str:
     nombre_bloque = nombre_bloque.upper()
 
     for grupo, lista_nombres in config_equipos.items():
-        # Convertimos la lista de config a mayúsculas para comparar seguro
         if any(nombre_bloque == n.upper() for n in lista_nombres):
             return grupo
 
@@ -68,7 +67,7 @@ def seleccionar_cable(
         logger.warning(
             f"Regla topológica no encontrada para {nombre_origen}->{nombre_destino}. Usando default."
         )
-        id_producto = "distribucion_std"  # Valor por defecto
+        id_producto = "distribucion_std"
 
     config_prod = get_config(f"catalogo_cables.{id_producto}")
 
