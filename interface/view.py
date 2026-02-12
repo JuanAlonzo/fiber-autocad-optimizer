@@ -2,8 +2,11 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 from datetime import datetime
 import socket
-
+from typing import TYPE_CHECKING, Optional
 from optimizer import FECHA_EXPIRACION
+
+if TYPE_CHECKING:
+    from .controller import FiberController
 
 
 class FiberUI:
@@ -12,7 +15,7 @@ class FiberUI:
     No contiene lógica de negocio.
     """
 
-    def __init__(self, root, controller=None):
+    def __init__(self, root, controller: Optional["FiberController"] = None):
         self.root = root
         self.controller = controller  # Referencia al controlador
 
@@ -50,7 +53,7 @@ class FiberUI:
         self._setup_footer_ui()
         self._setup_logs_ui()
 
-    def set_controller(self, controller):
+    def set_controller(self, controller: "FiberController"):
         """Permite asignar el controlador después de inicializar."""
         self.controller = controller
 
@@ -163,14 +166,14 @@ class FiberUI:
 
         ttk.Button(
             frame,
-            text="Asociar Hubs [En desarrollo]",  # (Seleccion por Defecto)
-            state="disabled",
+            text="Asociar Hubs",  # (Cambiar a Selección por Defecto)
+            command=lambda: self.controller.ejecutar_herramienta("asociar_hubs"),
         ).grid(row=0, column=1, **opts)
 
         ttk.Button(
             frame,
-            text="Modificar Atributos FAT",  # FAT[01,101,02] 202 <- Ejemplo
-            state="disabled",
+            text="Visualizar Atributos FAT",  # FAT[01,101,02] 202 <- ID_NAME
+            command=lambda: self.controller.ejecutar_herramienta("analizar_fat"),
         ).grid(row=0, column=2, **opts)
 
         ttk.Button(

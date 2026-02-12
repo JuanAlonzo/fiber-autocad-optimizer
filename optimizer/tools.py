@@ -9,6 +9,7 @@ from .acad_interface import get_acad_com
 from .acad_block_reader import extract_specific_blocks
 from .config_loader import get_config
 from .feedback_logger import logger
+from .utils_math import distancia_euclidiana
 
 
 def herramienta_visualizar_extremos() -> str:
@@ -130,3 +131,104 @@ def herramienta_inventario_rapido() -> str:
 
     logger.info(f"Inventario finalizado. Total: {len(bloques)}")
     return reporte
+
+
+def herramienta_asociar_hubs() -> str:
+    """
+    Busca bloques HUB y textos cercanos para 'adivinar' su nombre.
+    Retorna un reporte de texto.
+    """
+    acad = get_acad_com()
+    if not acad:
+        return "Error: No AutoCAD"
+    msp = acad.ActiveDocument.ModelSpace
+
+    # CONFIGURACIÓN (Idealmente mover a config.yaml)
+    RADIO = 20.0
+    LAYER_TEXTOS = "HUB_BOX_3.5_P"  # OJO: Ajustar a tu capa real
+    BLOQUE_HUB = "HBOX_3.5P"
+
+    hubs = []
+    textos = []
+
+    # 1. Escaneo
+    for i in range(msp.Count):
+        try:
+            obj = msp.Item(i)
+            if obj.ObjectName == "AcDbBlockReference":
+                name = obj.EffectiveName if hasattr(obj, "EffectiveName") else obj.Name
+                if name == BLOQUE_HUB:
+                    hubs.append(obj)
+            elif obj.ObjectName in ["AcDbText", "AcDbMText"]:
+                if obj.Layer == LAYER_TEXTOS:
+                    textos.append(obj)
+        except Exception:
+            pass
+
+    if not hubs:
+        return "No se encontraron bloques HUB."
+
+    # 2. Asociación
+    reporte = f"Hubs: {len(hubs)} | Textos: {len(textos)}\n"
+    asociados = 0
+
+    for hub in hubs:
+        ins = hub.InsertionPoint
+        p_hub = (ins[0], ins[1])
+        mejor_txt = None
+        min_dist = RADIO
+
+        for txt in textos:
+            t_ins = txt.InsertionPoint
+            d = distancia_euclidiana(p_hub, (t_ins[0], t_ins[1]))
+            if d < min_dist:
+                min_dist = d
+                mejor_txt = txt
+
+        if mejor_txt:
+            reporte += (
+                f"✅ Hub en {p_hub[0]:.0f},{p_hub[1]:.0f} -> '{mejor_txt.TextString}'\n"
+            )
+            asociados += 1
+        else:
+            reporte += f"⚠️ Hub en {p_hub[0]:.0f},{p_hub[1]:.0f} -> SIN TEXTO CERCA\n"
+
+    return f"Asociación terminada ({asociados}/{len(hubs)}).\n\n{reporte}"
+
+
+def herramienta_analizar_fat() -> str:
+    """
+    Lista los atributos ID_NAME de las FATs encontradas.
+    """
+    nombres_fat = ["FAT_INT_3.0_P", "FAT_FINAL_3.0_P"]  # Agregar más si es necesario
+    bloques = extract_specific_blocks(nombres_fat)
+
+    if not bloques:
+        return "No se encontraron FATs."
+
+    reporte = "--- ANÁLISIS FAT ---\n"
+    for b in bloques:
+        # Intentar buscar atributo ID_NAME o similar
+        attrs = b.get("attributes", {})
+        id_name = attrs.get("ID_NAME", "S/N")
+        reporte += f"• {b['name']} (H:{b['handle']}) -> ID: {id_name}\n"
+
+    return reporte
+
+
+def garantizar_capa_existente(doc, nombre_capa, color_id: int = 7) -> str:
+    """
+    Verifica si una capa existe en el documento. Si no, la crea.
+    Retorna el nombre de la capa validado.
+    """
+    try:
+        doc.Layers.Item(nombre_capa)
+    except Exception:
+        try:
+            nueva_capa = doc.Layers.Add(nombre_capa)
+            nueva_capa.Color = color_id
+        except Exception as e:
+            logger.error(f"No se pudo crear la capa '{nombre_capa}': {e}")
+            pass
+
+    return nombre_capa

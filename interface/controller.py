@@ -2,6 +2,7 @@ import threading
 import os
 import logging
 import pythoncom
+from typing import TYPE_CHECKING
 
 from optimizer import (
     extract_specific_blocks,
@@ -16,19 +17,25 @@ from optimizer import (
     get_config,
     load_config,
     exportar_csv,
+    herramienta_inventario_rapido,
+    herramienta_visualizar_extremos,
     logger,
 )
 
 from optimizer.tools import (
-    herramienta_inventario_rapido,
-    herramienta_visualizar_extremos,
+    herramienta_asociar_hubs,
+    herramienta_analizar_fat,
+    garantizar_capa_existente,
 )
+
+if TYPE_CHECKING:
+    from .view import FiberUI
 
 
 class GUIHandler(logging.Handler):
     """Handler personalizado para redirigir logs a la Vista."""
 
-    def __init__(self, view):
+    def __init__(self, view: "FiberUI"):
         super().__init__()
         self.view = view
 
@@ -38,7 +45,7 @@ class GUIHandler(logging.Handler):
 
 
 class FiberController:
-    def __init__(self, view):
+    def __init__(self, view: "FiberUI"):
         self.view = view
         self.view.set_controller(self)  # Conectar bidireccionalmente
 
@@ -78,6 +85,12 @@ class FiberController:
                 elif tipo == "extremos":
                     res = herramienta_visualizar_extremos()
                     self.view.show_info("Extremos", res)
+                elif tipo == "asociar_hubs":
+                    res = herramienta_asociar_hubs()
+                    self.view.show_info("Asociar Hubs", res)
+                elif tipo == "analizar_fat":
+                    res = herramienta_analizar_fat()
+                    self.view.show_info("Analizar FAT", res)
 
             except Exception as e:
                 logger.error(f"Error en herramienta {tipo}: {e}")
@@ -121,6 +134,13 @@ class FiberController:
                 "csv": self.view.var_csv.get(),
                 "capas": self.view.var_capas.get(),
             }
+
+            # Preparacion de capas
+            self.view.update_status("Verificando capas...", 8)
+            capa_debug = get_config("rutas.capa_debug", "DEBUG_RUTAS_CALCULADAS")
+            garantizar_capa_existente(doc, capa_debug, color_id=6)  # Magenta
+
+            garantizar_capa_existente(doc, "ERRORES_TOPOLOGIA", color_id=1)  # Rojo
 
             # 1. GRAFO
             self.view.update_status("Analizando Red...", 10)
@@ -191,6 +211,27 @@ class FiberController:
                         if opts["etiquetas"]:
                             txt = f"{tipo} {cable}m | L:{dist:.0f}m R:{res:.0f}m"
                             insertar_etiqueta_inteligente(msp, ruta, txt)
+                        if opts["capas"]:
+                            try:
+                                # Leer prefijo del config
+                                prefijo = get_config(
+                                    "capas_resultados.prefijo_capa", "CABLE PRECONECT"
+                                )
+
+                                # Construir el nombre dinámicamente
+                                # CABLE PRECONECT + 2H SM + (100M)
+                                nombre_capa_final = f"{prefijo} {tipo} ({int(cable)}M)"
+
+                                # Asegurar que la capa exista en AutoCAD
+                                if garantizar_capa_existente(doc, nombre_capa_final):
+                                    # Asignar la capa a la polilínea
+                                    obj.Layer = nombre_capa_final
+                                    obj.ConstantWidth = 0.5
+                                    obj.LinetypeScale = 4
+                            except Exception as e:
+                                logger.warning(
+                                    f"No se pudo cambiar capa en {obj.Handle}: {e}"
+                                )
 
                         datos_reporte.append(
                             {

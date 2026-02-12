@@ -53,6 +53,10 @@ equipos:
   fat_final: ["FAT_FINAL_3.0_P", "FAT_FINAL_3.5_P"]
   fat_out: ["FAT_OUT_FIN_P", "FAT_OUT_EXP"]
 
+# Configuracion de salida de capas
+capas_resultado:
+  prefijo_capa: "CABLE PRECONECT"
+
 # Catálogo de cables y reglas topológicas
 catalogo_cables:
   mpo_300:
