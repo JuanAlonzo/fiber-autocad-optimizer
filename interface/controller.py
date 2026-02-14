@@ -127,6 +127,7 @@ class FiberController:
         """Lógica central de optimización."""
         pythoncom.CoInitialize()
         try:
+            # Conexion
             acad, doc, msp = self._conectar_autocad()
             if not acad:
                 return
@@ -134,21 +135,30 @@ class FiberController:
             opts = self._obtener_opciones_vista()
             logger.info(" INICIANDO OPTIMIZACIÓN ")
 
+            # Preparar capas
+            self._preparar_capas(doc, opts)
 
+            # Construir grafo y equipos
+            grafo = self._construir_grafo(msp, opts)
+            bloques = self._obtener_catalogo_bloques()
 
+            # Procesar tramos
+            datos_reporte, exitos = self._procesar_tramos_red(
+                msp, doc, grafo, bloques, opts
+            )
 
+            # Exportar resultados
+            self._exportar_resultados(datos_reporte, opts)
+
+            # Finalizar
+            self.view.update_status("Finalizado.", 100)
+            self.view.show_info("Fin", f"Proceso completado.\n{exitos} tramos OK.")
 
         except Exception as e:
             logger.critical(f"Error Fatal: {e}")
             self.view.show_error("Error Fatal", str(e))
         finally:
             self.view.toggle_run_button(True)
-
-
-
-
-
-
 
     # Metodos Privados para organizar el proceso
 
@@ -174,38 +184,32 @@ class FiberController:
             "csv": self.view.var_csv.get(),
             "capas": self.view.var_capas.get(),
         }
-    
+
     def _preparar_capas(self, doc: Any, opts: Dict[str, Any]) -> None:
         """Asegura que existan las capas necesarias."""
         self.view.update_status("Verificando capas...", 8)
 
-        
         garantizar_capa_existente(doc, SysLayers.DEBUG_RUTAS, color_id=ASI.MAGENTA)
         garantizar_capa_existente(doc, SysLayers.ERRORES, color_id=ASI.ROJO)
-        if opts["etiquetas"]:
-            garantizar_capa_existente(
-                doc, SysLayers.TEXTO_TRAMOS, color_id=ASI.AZUL
-            )
-            garantizar_capa_existente(
-                doc, SysLayers.TEXTO_RESERVAS, color_id=ASI.CYAN
-            )
+        garantizar_capa_existente(doc, SysLayers.DEBUG_NODOS, color_id=ASI.CYAN)
+        garantizar_capa_existente(doc, SysLayers.DEBUG_ARISTAS, color_id=ASI.GRIS)
 
-        # 1. GRAFO
+        if opts["etiquetas"]:
+            garantizar_capa_existente(doc, SysLayers.TEXTO_TRAMOS, color_id=ASI.AZUL)
+            garantizar_capa_existente(doc, SysLayers.TEXTO_RESERVAS, color_id=ASI.CYAN)
+
+    def _construir_grafo(self, msp: Any, opts: Dict[str, Any]) -> NetworkGraph:
+        """Digitaliza la red vial y construye el grafo en memoria."""
         self.view.update_status("Analizando Red...", 10)
+
         CAPA_RED = get_config("rutas.capa_red_vial")
-        grafo = NetworkGraph(
-            tolerance=get_config("tolerancias.snap_grafo_vial", 0.1)
-        )
+        TOLERANCIA = get_config("tolerancias.snap_grafo_vial", 0.1)
+        grafo = NetworkGraph(tolerance=TOLERANCIA)
 
         if opts["grafo"]:
-            self.view.update_status("Dibujando visualizacion del Grafo...", 15)
-            garantizar_capa_existente(doc, SysLayers.DEBUG_NODOS, color_id=ASI.CYAN)
-            garantizar_capa_existente(
-                doc, SysLayers.DEBUG_ARISTAS, color_id=ASI.GRIS
-            )
+            self.view.update_status("Dibujando Grafo...", 15)
             dibujar_grafo_completo(msp, grafo)
 
-        # Llenar grafo
         count_lines = 0
         for i in range(msp.Count):
             try:
@@ -219,30 +223,31 @@ class FiberController:
         logger.info(
             f"Grafo construido: {count_lines} linea(s), {len(grafo.nodes)} nodo(s)."
         )
+        return grafo
 
-        # 2. EQUIPOS
+    def _obtener_catalogo_bloques(self) -> List[Dict[str, Any]]:
+        """Carga y busca los bloques de equipos configurados."""
         self.view.update_status("Buscando Equipos...", 30)
         dic_equipos = get_config("equipos", {})
         lista_todos = [item for sublist in dic_equipos.values() for item in sublist]
         bloques = extract_specific_blocks(lista_todos)
         logger.info(f"Equipos encontrados: {len(bloques)} bloque(s).")
 
-        #  3. PROCESAMIENTO
-        self.view.update_status("Calculando Rutas...", 40)
-        CAPA_TRAMO = get_config("rutas.capa_tramos_logicos")
+        return bloques
 
-        # Filtrar primero (optimización)
-        tramos = []
-        for i in range(msp.Count):
-            try:
-                obj = msp.Item(i)
-                if (
-                    obj.ObjectName == "AcDbPolyline"
-                    and obj.Layer.upper() == CAPA_TRAMO
-                ):
-                    tramos.append(obj)
-            except Exception:
-                pass
+    def _procesar_tramos_red(
+        self, msp: Any, doc: Any, grafo: NetworkGraph, bloques: List[Dict], opts: Dict
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """Itera sobre los tramos y calcula la lógica de negocio."""
+        self.view.update_status("Calculando Rutas...", 40)
+
+        CAPA_TRAMO = get_config("rutas.capa_tramos_logicos")
+        tramos = [
+            msp.Item(i)
+            for i in range(msp.Count)
+            if getattr(msp.Item(i), "ObjectName", "") == "AcDbPolyline"
+            and getattr(msp.Item(i), "Layer", "").upper() == CAPA_TRAMO
+        ]
 
         total = len(tramos)
         datos_reporte = []
@@ -250,94 +255,97 @@ class FiberController:
 
         for idx, obj in enumerate(tramos):
             pct = 40 + int((idx / total) * 50)
-            self.view.update_status(f"Procesando tramo {idx + 1}/{total}", pct)
+            self.view.update_status(f"Tramo {idx + 1}/{total}", pct)
 
-            try:
-                coords = obj.Coordinates
-                if len(coords) < 4:
-                    continue
-                p_start = (coords[0], coords[1])
-                p_end = (coords[-2], coords[-1])
+            resultado = self._procesar_un_tramo(msp, doc, obj, grafo, bloques, opts)
+            if result_data := resultado:
+                datos_reporte.append(result_data)
+                if result_data.get("estado") == "OK":
+                    exitos += 1
 
-                dist, ruta, meta = calcular_ruta_completa(
-                    p_start, p_end, grafo, bloques
+        return datos_reporte, exitos
+
+    def _procesar_un_tramo(
+        self,
+        msp: Any,
+        doc: Any,
+        obj: Any,
+        grafo: NetworkGraph,
+        bloques: List[Dict],
+        opts: Dict,
+    ) -> Optional[Dict[str, Any]]:
+        """Lógica unitaria para un solo tramo."""
+        try:
+            coords = obj.Coordinates
+            if len(coords) < 4:
+                return None
+
+            p_start = (coords[0], coords[1])
+            p_end = (coords[-2], coords[-1])
+
+            dist, ruta, meta = calcular_ruta_completa(p_start, p_end, grafo, bloques)
+
+            if not dist:
+                msg = (
+                    meta
+                    if isinstance(meta, str)
+                    else meta.get("error", "Error desconocido")
+                )
+                logger.warning(f"Tramo {obj.Handle}: {msg}")
+                if opts["errores"]:
+                    dibujar_circulo_error(msp, p_start)
+                return {"handle": obj.Handle, "estado": f"ERROR: {msg}"}
+
+            cable, res, tipo = seleccionar_cable(dist, meta["origen"], meta["destino"])
+
+            if opts["ruta_debug"]:
+                dibujar_debug_offset(msp, ruta)
+
+            if opts["etiquetas"]:
+                txt_tramo = f"{tipo} {int(cable)}m"
+                insertar_etiqueta_tramo(
+                    msp, ruta, txt_tramo, capa=SysLayers.TEXTO_TRAMOS
+                )
+                insertar_etiqueta_reserva(
+                    msp, ruta[-1], res, capa=SysLayers.TEXTO_RESERVAS
                 )
 
-                if dist:
-                    cable, res, tipo = seleccionar_cable(
-                        dist, meta["origen"], meta["destino"]
-                    )
+            if opts["capas"]:
+                self._aplicar_cambio_capa(doc, obj, tipo, cable)
 
-                    if opts["ruta_debug"]:
-                        dibujar_debug_offset(msp, ruta)
-                    if opts["etiquetas"]:
-                        # Etiqueta Central
-                        txt_tramo = f"{tipo} {int(cable)}m"
-                        insertar_etiqueta_tramo(msp, ruta, txt_tramo)
-                        # Etiqueta de Reserva
-                        punto_fin = ruta[-1]
-                        insertar_etiqueta_reserva(msp, punto_fin, res)
-                    if opts["capas"]:
-                        try:
-                            # Leer prefijo del config
-                            prefijo = get_config(
-                                "capas_resultados.prefijo_capa", "CABLE PRECONECT"
-                            )
+            return {
+                "handle": obj.Handle,
+                "origen": meta["origen"],
+                "destino": meta["destino"],
+                "longitud_real": dist,
+                "cable_asignado": cable,
+                "tipo_tecnico": tipo,
+                "reserva": res,
+                "estado": "OK",
+            }
 
-                            # Construir el nombre dinámicamente
-                            # CABLE PRECONECT + 2H SM + (100M)
-                            nombre_capa_final = f"{prefijo} {tipo} ({int(cable)}M)"
+        except Exception as e:
+            logger.error(f"Excepción en tramo {getattr(obj, 'Handle', '?')}: {e}")
+            return None
 
-                            # Asegurar que la capa exista en AutoCAD
-                            if garantizar_capa_existente(doc, nombre_capa_final):
-                                # Asignar la capa a la polilínea
-                                obj.Layer = nombre_capa_final
-                                obj.ConstantWidth = 0.5
-                                obj.LinetypeScale = 4
-                        except Exception as e:
-                            logger.warning(
-                                f"No se pudo cambiar capa en {obj.Handle}: {e}"
-                            )
+    def _aplicar_cambio_capa(self, doc: Any, obj: Any, tipo: str, cable: float) -> None:
+        """
+        Intenta cambiar la capa del objeto según reglas de negocio."""
+        try:
+            prefijo = get_config("capas_resultados.prefijo_capa", "CABLE PRECONECT")
+            # CABLE PRECONECT + 2H SM + (100M)
+            nombre_capa = f"{prefijo} {tipo} ({int(cable)}M)"
 
-                    datos_reporte.append(
-                        {
-                            "handle": obj.Handle,
-                            "origen": meta["origen"],
-                            "destino": meta["destino"],
-                            "longitud_real": dist,
-                            "cable_asignado": cable,
-                            "tipo_tecnico": tipo,
-                            "reserva": res,
-                            "estado": "OK",
-                        }
-                    )
-                    exitos += 1
-                else:
-                    msg = (
-                        meta
-                        if isinstance(meta, str)
-                        else meta.get("error", "Error")
-                    )
-                    logger.warning(f"Error {obj.Handle}: {msg}")
-                    if opts["errores"]:
-                        dibujar_circulo_error(msp, p_start)
-                    datos_reporte.append(
-                        {"handle": obj.Handle, "estado": f"ERROR: {msg}"}
-                    )
+            if garantizar_capa_existente(doc, nombre_capa):
+                obj.Layer = nombre_capa
+                obj.ConstantWidth = 0.5
+                obj.LinetypeScale = 4
 
-            except Exception as e:
-                logger.error(f"Excepción en tramo: {e}")
+        except Exception as e:
+            logger.warning(f"No se pudo cambiar capa en {obj.Handle}: {e}")
 
-        # 4. EXPORTAR
+    def _exportar_resultados(self, datos: List[Dict], opts: Dict) -> None:
+        """ "General el archivo CSV con los resultados."""
         if opts["csv"]:
             self.view.update_status("Exportando...", 95)
-            exportar_csv(datos_reporte)
-
-        self.view.update_status("Finalizado.", 100)
-        self.view.show_info("Fin", f"Proceso completado.\n{exitos} tramos OK.")
-
-    except Exception as e:
-        logger.critical(f"Error Fatal: {e}")
-        self.view.show_error("Error Fatal", str(e))
-    finally:
-        self.view.toggle_run_button(True)
+            exportar_csv(datos)
