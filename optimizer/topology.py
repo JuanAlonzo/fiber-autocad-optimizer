@@ -1,18 +1,31 @@
 """
 Módulo de Topología: Identifica qué conecta cada tramo en el espacio.
+Realiza el 'match' entre coordenadas geométricas y entidades lógicas (equipos).
 """
 
 import math
+from typing import Tuple, List, Dict, Optional, Any, Union
 from .config_loader import get_config
 from .feedback_logger import logger
+
+Point2D = Tuple[float, float]
 
 R_RADIUS = get_config("tolerancias.radio_busqueda_acceso", 20.0)
 R_SNAP = get_config("tolerancias.radio_snap_equipos", 5.0)
 
 
-def obtener_puntos_extremos(poly_obj):
+def obtener_puntos_extremos(
+    poly_obj: Any,
+) -> Tuple[Optional[Point2D], Optional[Point2D]]:
     """
-    Obtiene las coordenadas (x,y) de inicio y fin de una polilínea.
+    Obtiene las coordenadas (x,y) de inicio y fin de una polilínea COM de AutoCAD.
+
+    Args:
+        poly_obj (Any): Objeto COM 'AcDbPolyline'.
+
+    Returns:
+        Tuple[Optional[Point2D], Optional[Point2D]]:
+            ((x_ini, y_ini), (x_fin, y_fin)) o (None, None) si falla.
     """
     try:
         # Coordinates devuelve una tupla plana (x1, y1, x2, y2, ...)
@@ -28,8 +41,21 @@ def obtener_puntos_extremos(poly_obj):
         return None, None
 
 
-def encontrar_bloque_cercano(punto, bloques, radio_max):
-    """Busca el bloque más cercano (Snap a Equipos)."""
+def encontrar_bloque_cercano(
+    punto: Point2D, bloques: List[Dict[str, Any]], radio_max: float
+) -> Tuple[Optional[Dict[str, Any]], Optional[float]]:
+    """
+    Busca el bloque más cercano a un punto dado dentro de un radio máximo.
+
+    Args:
+        punto (Point2D): Coordenada (x, y) de referencia.
+        bloques (List[Dict]): Lista de diccionarios de bloques (debe contener clave "xyz").
+        radio_max (float): Distancia máxima permitida para el snap.
+
+    Returns:
+        Tuple[Optional[Dict], Optional[float]]:
+            (Mejor Bloque, Distancia) o (None, None) si no encuentra nada.
+    """
     mejor_bloque = None
     mejor_dist = float("inf")
 
@@ -46,10 +72,28 @@ def encontrar_bloque_cercano(punto, bloques, radio_max):
     return None, None
 
 
-def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
+def calcular_ruta_completa(
+    p_inicio: Point2D, p_fin: Point2D, grafo: Any, lista_bloques: List[Dict[str, Any]]
+) -> Tuple[Optional[float], List[Point2D], Union[Dict[str, Any], str]]:
     """
-    Calcula la ruta completa (lista de puntos) entre dos coordenadas.
-    Retorna: (distancia_total, lista_puntos_para_dibujar, metadata)
+    Calcula la ruta completa entre dos puntos geográficos, pasando por la red vial.
+
+    Flujo:
+    1. Identifica equipos cercanos a p_inicio y p_fin (Snap).
+    2. Busca acceso a la red vial (Grafo).
+    3. Calcula ruta más corta (Dijkstra).
+
+    Args:
+        p_inicio (Point2D): Coordenada inicial de la polilínea.
+        p_fin (Point2D): Coordenada final de la polilínea.
+        grafo (NetworkGraph): Instancia del grafo de red vial.
+        lista_bloques (List[Dict]): Inventario de equipos disponibles.
+
+    Returns:
+        Tuple:
+            - distancia_total (float | None): Distancia en metros o None si falla.
+            - camino_visual (List[Point2D]): Lista de puntos para dibujar la ruta debug.
+            - metadata (Dict | str): Datos del tramo (origen, destino) o mensaje de error.
     """
 
     # Identifica Equipos (Inicio y Fin)
@@ -68,15 +112,18 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
 
     # Conectar a la Red (Grafo)
     # Buscamos el nodo de calle más cercano a cada equipo
-    pos_ini = (eq_inicio["xyz"][0], eq_inicio["xyz"][1])
-    pos_fin = (eq_fin["xyz"][0], eq_fin["xyz"][1])
+    pos_ini: Point2D = (eq_inicio["xyz"][0], eq_inicio["xyz"][1])
+    pos_fin: Point2D = (eq_fin["xyz"][0], eq_fin["xyz"][1])
 
     node_a, dist_acceso_a = grafo.find_nearest_node(pos_ini, max_radius=R_RADIUS)
     node_b, dist_acceso_b = grafo.find_nearest_node(pos_fin, max_radius=R_RADIUS)
 
     if not node_a or not node_b:
+        # Logs detallados para depuración
+        d_a_str = f"{dist_acceso_a}" if dist_acceso_a is not None else "Fuera de Rango"
+        d_b_str = f"{dist_acceso_b}" if dist_acceso_b is not None else "Fuera de Rango"
         logger.debug(
-            f"Equipo aislado de calle: {eq_inicio['name']} (DistRed: {dist_acceso_a}), {eq_fin['name']} (DistRed: {dist_acceso_b})"
+            f"Equipo aislado de calle: {eq_inicio['name']} (DistRed: {d_a_str}), {eq_fin['name']} (DistRed: {d_b_str})"
         )
         return (
             None,
@@ -95,11 +142,14 @@ def calcular_ruta_completa(p_inicio, p_fin, grafo, lista_bloques):
     # Equipo A -> Punto A -> ...Ruta... -> Punto B -> Equipo B
     camino_visual = [pos_ini] + path_red + [pos_fin]
 
+    d_acc_a = dist_acceso_a if dist_acceso_a else 0.00
+    d_acc_b = dist_acceso_b if dist_acceso_b else 0.00
+
     meta = {
         "origen": eq_inicio["name"],
         "destino": eq_fin["name"],
         "tipo_conexion": f"{eq_inicio['name']}->{eq_fin['name']}",
-        "desglose": f"Red: {dist_red:.2f}m (Accesos ignorados: {dist_acceso_a:.2f}m + {dist_acceso_b:.2f}m)",
+        "desglose": f"Red: {dist_red:.2f}m (Accesos ignorados: {d_acc_a:.2f}m + {d_acc_b:.2f}m)",
     }
 
     return dist_red, camino_visual, meta

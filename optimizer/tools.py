@@ -3,14 +3,40 @@ Módulo de Herramientas de Diagnóstico y Utilidades Varias.
 Aloja funcionalidades puntuales invocadas desde la GUI.
 """
 
+from typing import Optional, Any, List, Dict
 import win32com.client
-import pythoncom
 from .acad_interface import get_acad_com
 from .acad_block_reader import extract_specific_blocks
 from .config_loader import get_config
 from .constants import ASI, SysLayers, Geometry
 from .feedback_logger import logger
 from .utils_math import distancia_euclidiana
+
+
+def garantizar_capa_existente(
+    doc: Any, nombre_capa: str, color_id: int = ASI.BLANCO
+) -> Optional[str]:
+    """
+    Verifica si una capa existe en el documento. Si no, la crea.
+    Args:
+        doc: Documento activo de AutoCAD.
+        nombre_capa: Nombre de la capa deseada.
+        color_id: Color ACI por defecto (7 = Blanco/Negro).
+    Returns:
+        str: El nombre de la capa si todo salió bien, o None si falló.
+    """
+    try:
+        doc.Layers.Item(nombre_capa)
+    except Exception:
+        try:
+            nueva_capa = doc.Layers.Add(nombre_capa)
+            nueva_capa.Color = color_id
+            return nombre_capa
+        except Exception as e:
+            logger.error(f"No se pudo crear la capa '{nombre_capa}': {e}")
+            return None
+
+    return nombre_capa
 
 
 def herramienta_visualizar_extremos() -> str:
@@ -26,15 +52,12 @@ def herramienta_visualizar_extremos() -> str:
     msp = acad.ActiveDocument.ModelSpace
     capa_tramo = get_config("rutas.capa_tramos_logicos", "TRAMO")
 
-    # Capa temporal para visualización
-    capa_visual = SysLayers.TEMPORAL_EXTREMOS
-    try:
-        acad.ActiveDocument.Layers.Add(capa_visual).Color = ASI.MAGENTA
-    except Exception:
-        pass
+    garantizar_capa_existente(
+        acad.ActiveDocument, SysLayers.TEMPORAL_EXTREMOS, ASI.MAGENTA
+    )
 
     count = 0
-    radio_marca = Geometry.RADIO_INI_FIN
+    import pythoncom
 
     for i in range(msp.Count):
         try:
@@ -53,7 +76,7 @@ def herramienta_visualizar_extremos() -> str:
                     win32com.client.VARIANT(
                         pythoncom.VT_ARRAY | pythoncom.VT_R8, p_ini
                     ),
-                    radio_marca,
+                    Geometry.RADIO_INI_FIN,
                 )
                 t_ini = msp.AddText(
                     "INI",
@@ -64,16 +87,16 @@ def herramienta_visualizar_extremos() -> str:
                     1.5,
                 )
                 t_ini.Color = ASI.VERDE
-                t_ini.Layer = capa_visual
+                t_ini.Layer = SysLayers.TEMPORAL_EXTREMOS
                 c_ini.Color = ASI.VERDE
-                c_ini.Layer = capa_visual
+                c_ini.Layer = SysLayers.TEMPORAL_EXTREMOS
 
                 # Dibujar FIN (Rojo)
                 c_fin = msp.AddCircle(
                     win32com.client.VARIANT(
                         pythoncom.VT_ARRAY | pythoncom.VT_R8, p_fin
                     ),
-                    radio_marca,
+                    Geometry.RADIO_INI_FIN,
                 )
 
                 t_fin = msp.AddText(
@@ -85,16 +108,16 @@ def herramienta_visualizar_extremos() -> str:
                     1.5,
                 )
                 t_fin.Color = ASI.ROJO
-                t_fin.Layer = capa_visual
+                t_fin.Layer = SysLayers.TEMPORAL_EXTREMOS
                 c_fin.Color = ASI.ROJO
-                c_fin.Layer = capa_visual
+                c_fin.Layer = SysLayers.TEMPORAL_EXTREMOS
 
                 count += 1
         except Exception:
             continue
 
     logger.info(
-        f"Visualización de extremos: {count} polilíneas marcadas en capa '{capa_visual}'."
+        f"Visualización de extremos: {count} polilíneas marcadas en capa '{SysLayers.TEMPORAL_EXTREMOS}'."
     )
     return f"Se marcaron {count} tramos."
 
@@ -102,10 +125,11 @@ def herramienta_visualizar_extremos() -> str:
 def herramienta_inventario_rapido() -> str:
     """
     Escanea el dibujo y cuenta los bloques configurados en el YAML.
-    Retorna un string con el resumen.
+    Returns:
+        str: Reporte formateado para mostrar al usuario.
     """
-    dic_equipos = get_config("equipos", {})
-    target_names = []
+    dic_equipos: Dict[str, List[str]] = get_config("equipos", {})
+    target_names: List[str] = []
     for lista in dic_equipos.values():
         target_names.extend(lista)
 
@@ -115,7 +139,7 @@ def herramienta_inventario_rapido() -> str:
     logger.info("Iniciando inventario de bloques...")
     bloques = extract_specific_blocks(target_names)
 
-    conteo = {}
+    conteo: Dict[str, int] = {}
     for b in bloques:
         nombre = b["name"]
         conteo[nombre] = conteo.get(nombre, 0) + 1
@@ -165,10 +189,10 @@ def herramienta_asociar_hubs() -> str:
             pass
 
     if not hubs:
-        return "No se encontraron bloques HUB."
+        return f"No se encontraron bloques '{BLOQUE_HUB}'."
 
     # 2. Asociación
-    reporte = f"Hubs: {len(hubs)} | Textos: {len(textos)}\n"
+    reporte = f"Hubs encontrados: {len(hubs)} | Textos encontrados: {len(textos)}\n\n"
     asociados = 0
 
     for hub in hubs:
@@ -185,12 +209,10 @@ def herramienta_asociar_hubs() -> str:
                 mejor_txt = txt
 
         if mejor_txt:
-            reporte += (
-                f"Hub en {p_hub[0]:.0f},{p_hub[1]:.0f} -> '{mejor_txt.TextString}'\n"
-            )
+            reporte += f"Hub en {p_hub} -> '{mejor_txt.TextString}'\n"
             asociados += 1
         else:
-            reporte += f"Hub en {p_hub[0]:.0f},{p_hub[1]:.0f} -> SIN TEXTO CERCA\n"
+            reporte += f"Hub en {p_hub} -> SIN TEXTO (<{RADIO}m)\n"
 
     return f"Asociación terminada ({asociados}/{len(hubs)}).\n\n{reporte}"
 
@@ -210,24 +232,6 @@ def herramienta_analizar_fat() -> str:
         # Intentar buscar atributo ID_NAME o similar
         attrs = b.get("attributes", {})
         id_name = attrs.get("ID_NAME", "S/N")
-        reporte += f"• {b['name']} (H:{b['handle']}) -> ID: {id_name}\n"
+        reporte += f"• {b['name']} -> {id_name}\n"
 
     return reporte
-
-
-def garantizar_capa_existente(doc, nombre_capa, color_id: int = ASI.BLANCO) -> str:
-    """
-    Verifica si una capa existe en el documento. Si no, la crea.
-    Retorna el nombre de la capa validado.
-    """
-    try:
-        doc.Layers.Item(nombre_capa)
-    except Exception:
-        try:
-            nueva_capa = doc.Layers.Add(nombre_capa)
-            nueva_capa.Color = color_id
-        except Exception as e:
-            logger.error(f"No se pudo crear la capa '{nombre_capa}': {e}")
-            pass
-
-    return nombre_capa
