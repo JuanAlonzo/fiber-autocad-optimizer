@@ -11,7 +11,6 @@ from optimizer import (
     seleccionar_cable,
     dibujar_debug_offset,
     dibujar_circulo_error,
-    dibujar_grafo_completo,
     calcular_ruta_completa,
     insertar_etiqueta_reserva,
     insertar_etiqueta_tramo,
@@ -22,6 +21,7 @@ from optimizer import (
     herramienta_visualizar_extremos,
     herramienta_asociar_hubs,
     herramienta_analizar_fat,
+    herramienta_dibujar_grafo_vial,
     garantizar_capa_existente,
     ASI,
     SysLayers,
@@ -41,7 +41,7 @@ class GUIHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord):
         msg = self.format(record)
-        self.view.log_message(msg)
+        self.view.log_message(msg, record.levelname)
 
 
 class FiberController:
@@ -95,6 +95,9 @@ class FiberController:
                 if tipo == "inventario":
                     res = herramienta_inventario_rapido()
                     titulo = "Inventario"
+                elif tipo == "grafo":
+                    res = herramienta_dibujar_grafo_vial()
+                    titulo = "Grafo Vial"
                 elif tipo == "extremos":
                     res = herramienta_visualizar_extremos()
                     titulo = "Extremos"
@@ -177,7 +180,7 @@ class FiberController:
     def _obtener_opciones_vista(self) -> Dict[str, Any]:
         """Extrae la configuración de los checkboxes de la UI."""
         return {
-            "grafo": self.view.var_grafo.get(),
+            "audit": self.view.var_audit.get(),
             "ruta_debug": self.view.var_debug_ruta.get(),
             "etiquetas": self.view.var_labels.get(),
             "errores": self.view.var_errores.get(),
@@ -205,10 +208,6 @@ class FiberController:
         CAPA_RED = get_config("rutas.capa_red_vial")
         TOLERANCIA = get_config("tolerancias.snap_grafo_vial", 0.1)
         grafo = NetworkGraph(tolerance=TOLERANCIA)
-
-        if opts["grafo"]:
-            self.view.update_status("Dibujando Grafo...", 15)
-            dibujar_grafo_completo(msp, grafo)
 
         count_lines = 0
         for i in range(msp.Count):

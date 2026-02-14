@@ -8,6 +8,8 @@ import win32com.client
 from .acad_interface import get_acad_com
 from .acad_block_reader import extract_specific_blocks
 from .config_loader import get_config
+from .acad_geometry import NetworkGraph
+from .acad_drawer import dibujar_grafo_completo
 from .constants import ASI, SysLayers, Geometry
 from .feedback_logger import logger
 from .utils_math import distancia_euclidiana
@@ -235,3 +237,47 @@ def herramienta_analizar_fat() -> str:
         reporte += f"• {b['name']} -> {id_name}\n"
 
     return reporte
+
+
+def herramienta_dibujar_grafo_vial() -> str:
+    """
+    Construye y dibuja el grafo de la red vial en el plano actual.
+    """
+    acad = get_acad_com()
+    if not acad:
+        return "Error: No hay conexión con AutoCAD."
+
+    doc = acad.ActiveDocument
+    msp = doc.ModelSpace
+
+    # 1. Preparar capas visuales
+    garantizar_capa_existente(doc, SysLayers.DEBUG_NODOS, ASI.CYAN)
+    garantizar_capa_existente(doc, SysLayers.DEBUG_ARISTAS, ASI.GRIS)
+
+    # 2. Construir Grafo
+    logger.info("Leyendo red vial para visualización...")
+    capa_red = get_config("rutas.capa_red_vial")
+    tol = get_config("tolerancias.snap_grafo_vial", 0.1)
+
+    grafo = NetworkGraph(tolerance=tol)
+
+    count = 0
+    for i in range(msp.Count):
+        try:
+            obj = msp.Item(i)
+            if obj.ObjectName == "AcDbLine" and obj.Layer.upper() == capa_red:
+                grafo.add_line(obj.StartPoint[:2], obj.EndPoint[:2])
+                count += 1
+        except Exception:
+            pass
+
+    if count == 0:
+        return f"No se encontraron líneas en la capa '{capa_red}'."
+
+    # 3. Dibujar
+    logger.info(f"Dibujando {len(grafo.nodes)} nodos y sus conexiones...")
+    dibujar_grafo_completo(msp, grafo)
+
+    return (
+        f"Grafo dibujado.\nLíneas procesadas: {count}\nNodos únicos: {len(grafo.nodes)}"
+    )

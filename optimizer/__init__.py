@@ -23,6 +23,7 @@ from .tools import (
     herramienta_asociar_hubs,
     herramienta_analizar_fat,
     garantizar_capa_existente,
+    herramienta_dibujar_grafo_vial,
 )
 from .topology import calcular_ruta_completa
 
@@ -42,6 +43,7 @@ __all__ = [
     FECHA_EXPIRACION,
     herramienta_visualizar_extremos,
     herramienta_inventario_rapido,
+    herramienta_dibujar_grafo_vial,
     calcular_ruta_completa,
     insertar_etiqueta_reserva,
     insertar_etiqueta_tramo,
