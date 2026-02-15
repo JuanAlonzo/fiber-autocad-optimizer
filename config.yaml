@@ -1,20 +1,14 @@
 # Configuración
 
-# Configuración del sistema (EN REVISION)
-sistema:
-  unidades: "metros"
-  usar_logger_archivo: true
-  usar_logger_consola: true
-
 # Configuración de capas y rutas
 rutas:
   capa_red_vial: "CAT_LINEA DE RED EXISTENTE"
   capa_tramos_logicos: "TRAMO"
-  tolerancia_snap_equipos: 2.0 # Metros para detectar equipo cerca de la punta (EN REVISION)
-  umbral_desprecio_acceso: 3.0 # Metros para considerar distancia=0 (poste) (EN REVISION)
+  capa_textos_hubs: "HUB_BOX_3.5_P"
 
 # Configuración de tolerancias para procesamiento de datos
 tolerancias:
+  snap_grafo_vial: 0.1 # Metros para snapear al grafo vial
   radio_busqueda_acceso: 20.0 # Máxima distancia para buscar un equipo
   radio_snap_equipos: 5.0 # Distancia para asociar polilínea a equipo
 

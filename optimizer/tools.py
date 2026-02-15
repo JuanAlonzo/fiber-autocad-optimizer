@@ -168,53 +168,63 @@ def herramienta_asociar_hubs() -> str:
         return "Error: No AutoCAD"
     msp = acad.ActiveDocument.ModelSpace
 
-    # CONFIGURACIÓN (ajustable)
-    RADIO = 20.0
-    LAYER_TEXTOS = "HUB_BOX_3.5_P"
-    BLOQUE_HUB = "HBOX_3.5P"
+    # CONFIG
+    hbox_validos = get_config("equipos.hbox", [])
+    RADIO = get_config("tolerancias.radio_busqueda_acceso", 20.0)
+    capa_textos = get_config("rutas.capa_textos_hubs", "HUB_BOX_3.5_P")
 
     hubs = []
     textos = []
 
-    # 1. Escaneo
+    if not hbox_validos:
+        return "No hay bloque 'hbox' configurado en config.yaml"
+
+    # Escaneo
     for i in range(msp.Count):
         try:
             obj = msp.Item(i)
-            if obj.ObjectName == "AcDbBlockReference":
+            nombre_obj = obj.ObjectName
+
+            if nombre_obj == "AcDbBlockReference":
                 name = obj.EffectiveName if hasattr(obj, "EffectiveName") else obj.Name
-                if name == BLOQUE_HUB:
+                if name in hbox_validos:
                     hubs.append(obj)
-            elif obj.ObjectName in ["AcDbText", "AcDbMText"]:
-                if obj.Layer == LAYER_TEXTOS:
+
+            elif nombre_obj in ["AcDbText", "AcDbMText"]:
+                if capa_textos is None or obj.Layer == capa_textos:
                     textos.append(obj)
         except Exception:
             pass
 
     if not hubs:
-        return f"No se encontraron bloques '{BLOQUE_HUB}'."
+        return f"No se encontraron bloques '{hbox_validos}'."
 
     # 2. Asociación
     reporte = f"Hubs encontrados: {len(hubs)} | Textos encontrados: {len(textos)}\n\n"
     asociados = 0
 
     for hub in hubs:
-        ins = hub.InsertionPoint
-        p_hub = (ins[0], ins[1])
-        mejor_txt = None
-        min_dist = RADIO
+        try:
+            ins = hub.InsertionPoint
+            p_hub = (ins[0], ins[1])
+            mejor_txt = None
+            min_dist = RADIO
 
-        for txt in textos:
-            t_ins = txt.InsertionPoint
-            d = distancia_euclidiana(p_hub, (t_ins[0], t_ins[1]))
-            if d < min_dist:
-                min_dist = d
-                mejor_txt = txt
+            for txt in textos:
+                t_ins = txt.InsertionPoint
+                d = distancia_euclidiana(p_hub, (t_ins[0], t_ins[1]))
+                if d < min_dist:
+                    min_dist = d
+                    mejor_txt = txt
 
-        if mejor_txt:
-            reporte += f"Hub en {p_hub} -> '{mejor_txt.TextString}'\n"
-            asociados += 1
-        else:
-            reporte += f"Hub en {p_hub} -> SIN TEXTO (<{RADIO}m)\n"
+            if mejor_txt:
+                texto_limpio = mejor_txt.TextString.strip()
+                reporte += f"Hub ({hub.Name}) en ({p_hub}) -> '{texto_limpio}'\n"
+                asociados += 1
+            else:
+                reporte += f"Hub ({hub.Name}) en ({p_hub}) -> SIN TEXTO (<{RADIO}m)\n"
+        except Exception as e:
+            logger.debug(f"Error al asociar hub: {e}")
 
     return f"Asociación terminada ({asociados}/{len(hubs)}).\n\n{reporte}"
 
