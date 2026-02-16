@@ -32,5 +32,7 @@ Desktop.ini
 *.tmp
 tmp/
 
+# Archivos de configuración
+*.json
 
 
