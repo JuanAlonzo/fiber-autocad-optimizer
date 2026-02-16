@@ -94,3 +94,34 @@ def get_config(key_path: str, default: Any = None) -> Any:
         return value
     except (KeyError, TypeError):
         return default
+
+
+def validar_configuracion() -> list[str]:
+    """
+    Verifica que existan las claves críticas.
+    Retorna una lista de errores encontrados. Si está vacía, todo OK.
+    """
+    errores = []
+
+    # Lista de claves obligatorias
+    claves_criticas = [
+        "rutas.capa_red_vial",
+        "rutas.capa_tramos_logicos",
+        "equipos.xbox",
+        "equipos.hbox",
+        "equipos.fat_int",
+        "equipos.fat_final",
+        "capas_resultado.prefijo_capa",
+        "catalogo_cables",
+    ]
+
+    for clave in claves_criticas:
+        if get_config(clave) is None:
+            errores.append(f"Falta la clave crítica: '{clave}'")
+
+    # Validación extra: Verificar que existan longitudes en los cables
+    cables = get_config("catalogo_cables", {})
+    if not cables:
+        errores.append("La sección 'catalogo_cables' está vacía o no existe.")
+
+    return errores

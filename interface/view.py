@@ -33,7 +33,9 @@ class FiberUI:
         self.root.title("Fiber AutoCAD Optimizer v2.5 - Enterprise")
         self.root.geometry("900x750")
         self.root.minsize(850, 700)  # Corrección aplicada aquí también
+        self.root.resizable(False, True)
         self.root.configure(bg=COLOR_BG_MAIN)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Variables
         self.var_debug_ruta = tk.BooleanVar(value=True)
@@ -41,6 +43,7 @@ class FiberUI:
         self.var_labels = tk.BooleanVar(value=True)
         self.var_errores = tk.BooleanVar(value=True)
         self.var_csv = tk.BooleanVar(value=True)
+        self.var_audit = tk.BooleanVar(value=False)
 
         self._setup_styles()
         self._setup_header()
@@ -400,3 +403,18 @@ class FiberUI:
         self.txt_log.delete("1.0", tk.END)
         self.txt_log.config(state="disabled")
         self.log_message("--- Logs Limpiados ---", "INFO")
+
+    def on_close(self):
+        """
+        Método ejecutado al intentar cerrar la ventana.
+        Guarda preferencias y destruye la interfaz.
+        """
+        if self.controller:
+            try:
+                # Llamamos al controlador para que guarde el JSON
+                self.controller.guardar_preferencias()
+            except Exception as e:
+                print(f"Error guardando preferencias: {e}")
+
+        # Cierra la aplicación definitivamente
+        self.root.destroy()

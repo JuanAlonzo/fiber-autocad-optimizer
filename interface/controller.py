@@ -1,5 +1,6 @@
 import threading
 import os
+import json
 import logging
 import pythoncom
 from typing import TYPE_CHECKING, Tuple, List, Dict, Any, Optional
@@ -31,6 +32,8 @@ from optimizer import (
 if TYPE_CHECKING:
     from .view import FiberUI
 
+PREFS_FILE = "user_prefs.json"
+
 
 class GUIHandler(logging.Handler):
     """Handler personalizado para redirigir logs a la Vista."""
@@ -57,6 +60,50 @@ class FiberController:
 
         # Configurar Logs
         self._setup_logging()
+        self.cargar_preferencias()
+        self._stop_requested = False
+
+    def cargar_preferencias(self):
+        """Lee el JSON y actualiza los checkboxes de la vista."""
+        if not os.path.exists(PREFS_FILE):
+            return
+
+        try:
+            with open(PREFS_FILE, "r") as f:
+                data = json.load(f)
+
+            # Actualizar variables de la vista si existen en el JSON
+            if "capas" in data:
+                self.view.var_capas.set(data["capas"])
+            if "debug_ruta" in data:
+                self.view.var_debug_ruta.set(data["debug_ruta"])
+            if "labels" in data:
+                self.view.var_labels.set(data["labels"])
+            if "errores" in data:
+                self.view.var_errores.set(data["errores"])
+            if "csv" in data:
+                self.view.var_csv.set(data["csv"])
+            if "audit" in data:
+                self.view.var_audit.set(data["audit"])
+
+        except Exception as e:
+            logger.error(f"No se pudieron cargar preferencias: {e}")
+
+    def guardar_preferencias(self):
+        """Guarda el estado actual de los checkboxes."""
+        data = {
+            "capas": self.view.var_capas.get(),
+            "debug_ruta": self.view.var_debug_ruta.get(),
+            "labels": self.view.var_labels.get(),
+            "errores": self.view.var_errores.get(),
+            "csv": self.view.var_csv.get(),
+            "audit": self.view.var_audit.get(),
+        }
+        try:
+            with open(PREFS_FILE, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            logger.error(f"No se pudieron guardar preferencias: {e}")
 
     def _setup_logging(self) -> None:
         handler = GUIHandler(self.view)
@@ -126,8 +173,15 @@ class FiberController:
         thread = threading.Thread(target=self._proceso_worker, daemon=True)
         thread.start()
 
+    def solicitar_cancelacion(self):
+        """Método llamado por el botón Cancelar."""
+        if self.view.btn_run["state"] == "disabled":  # Solo si está corriendo
+            self._stop_requested = True
+            self.view.update_status("Cancelando proceso...", None)
+
     def _proceso_worker(self) -> None:
         """Lógica central de optimización."""
+        self._stop_requested = False
         pythoncom.CoInitialize()
         try:
             # Conexion
@@ -331,7 +385,7 @@ class FiberController:
         """
         Intenta cambiar la capa del objeto según reglas de negocio."""
         try:
-            prefijo = get_config("capas_resultados.prefijo_capa", "CABLE PRECONECT")
+            prefijo = get_config("capas_resultado.prefijo_capa", "CABLE PRECONECT")
             # CABLE PRECONECT + 2H SM + (100M)
             nombre_capa = f"{prefijo} {tipo} ({int(cable)}M)"
 
