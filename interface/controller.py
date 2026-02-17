@@ -73,18 +73,16 @@ class FiberController:
                 data = json.load(f)
 
             # Actualizar variables de la vista si existen en el JSON
-            if "capas" in data:
-                self.view.var_capas.set(data["capas"])
             if "debug_ruta" in data:
                 self.view.var_debug_ruta.set(data["debug_ruta"])
+            if "capas" in data:
+                self.view.var_capas.set(data["capas"])
             if "labels" in data:
                 self.view.var_labels.set(data["labels"])
             if "errores" in data:
                 self.view.var_errores.set(data["errores"])
             if "csv" in data:
                 self.view.var_csv.set(data["csv"])
-            if "audit" in data:
-                self.view.var_audit.set(data["audit"])
 
         except Exception as e:
             logger.error(f"No se pudieron cargar preferencias: {e}")
@@ -92,12 +90,11 @@ class FiberController:
     def guardar_preferencias(self):
         """Guarda el estado actual de los checkboxes."""
         data = {
-            "capas": self.view.var_capas.get(),
             "debug_ruta": self.view.var_debug_ruta.get(),
+            "capas": self.view.var_capas.get(),
             "labels": self.view.var_labels.get(),
             "errores": self.view.var_errores.get(),
             "csv": self.view.var_csv.get(),
-            "audit": self.view.var_audit.get(),
         }
         try:
             with open(PREFS_FILE, "w") as f:
@@ -106,13 +103,14 @@ class FiberController:
             logger.error(f"No se pudieron guardar preferencias: {e}")
 
     def _setup_logging(self) -> None:
-        handler = GUIHandler(self.view)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
+        if not any(isinstance(h, GUIHandler) for h in logger.handlers):
+            handler = GUIHandler(self.view)
+            formatter = logging.Formatter(
+                "%(asctime)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.DEBUG)
 
     #  ACCIONES
 
@@ -135,10 +133,12 @@ class FiberController:
         def _task():
             pythoncom.CoInitialize()
             try:
-                self.view.update_status(f"Ejecutando {tipo}...")
+                self.view.update_status(f"Ejecutando {tipo}...", 0.2)
+
                 res = ""
                 titulo = "Resultado"
 
+                # Mapeo de herramientas
                 if tipo == "inventario":
                     res = herramienta_inventario_rapido()
                     titulo = "Inventario"
@@ -168,7 +168,7 @@ class FiberController:
     def iniciar_proceso_principal(self) -> None:
         """Lanza el hilo principal de optimización."""
         self.view.toggle_run_button(False)
-        self.view.update_status("Inicializando...", 0)
+        self.view.update_status("Inicializando...", 0.05)
 
         thread = threading.Thread(target=self._proceso_worker, daemon=True)
         thread.start()
@@ -196,7 +196,10 @@ class FiberController:
             self._preparar_capas(doc, opts)
 
             # Construir grafo y equipos
+            self.view.update_status("Analizando Grafo...", 0.1)
             grafo = self._construir_grafo(msp, opts)
+
+            self.view.update_status("Buscando Bloques...", 0.2)
             bloques = self._obtener_catalogo_bloques()
 
             # Procesar tramos
@@ -208,7 +211,7 @@ class FiberController:
             self._exportar_resultados(datos_reporte, opts)
 
             # Finalizar
-            self.view.update_status("Finalizado.", 100)
+            self.view.update_status("Finalizado.", 1.0)
             self.view.show_info("Fin", f"Proceso completado.\n{exitos} tramos OK.")
 
         except Exception as e:
@@ -221,7 +224,7 @@ class FiberController:
 
     def _conectar_autocad(self):
         """Conecta con la instancia activa de AutoCAD."""
-        self.view.update_status("Conectando AutoCAD...", 5)
+        self.view.update_status("Conectando AutoCAD...", 0.02)
         acad = get_acad_com()
 
         if not acad:
@@ -234,22 +237,25 @@ class FiberController:
     def _obtener_opciones_vista(self) -> Dict[str, Any]:
         """Extrae la configuración de los checkboxes de la UI."""
         return {
-            "audit": self.view.var_audit.get(),
             "ruta_debug": self.view.var_debug_ruta.get(),
+            "capas": self.view.var_capas.get(),
             "etiquetas": self.view.var_labels.get(),
             "errores": self.view.var_errores.get(),
             "csv": self.view.var_csv.get(),
-            "capas": self.view.var_capas.get(),
         }
 
     def _preparar_capas(self, doc: Any, opts: Dict[str, Any]) -> None:
         """Asegura que existan las capas necesarias."""
-        self.view.update_status("Verificando capas...", 8)
+        self.view.update_status("Verificando capas...", 0.08)
 
-        garantizar_capa_existente(doc, SysLayers.DEBUG_RUTAS, color_id=ASI.MAGENTA)
-        garantizar_capa_existente(doc, SysLayers.ERRORES, color_id=ASI.ROJO)
         garantizar_capa_existente(doc, SysLayers.DEBUG_NODOS, color_id=ASI.CYAN)
         garantizar_capa_existente(doc, SysLayers.DEBUG_ARISTAS, color_id=ASI.GRIS)
+
+        if opts["errores"]:
+            garantizar_capa_existente(doc, SysLayers.ERRORES, color_id=ASI.ROJO)
+
+        if opts["ruta_debug"]:
+            garantizar_capa_existente(doc, SysLayers.DEBUG_RUTAS, color_id=ASI.MAGENTA)
 
         if opts["etiquetas"]:
             garantizar_capa_existente(doc, SysLayers.TEXTO_TRAMOS, color_id=ASI.AZUL)
@@ -257,7 +263,7 @@ class FiberController:
 
     def _construir_grafo(self, msp: Any, opts: Dict[str, Any]) -> NetworkGraph:
         """Digitaliza la red vial y construye el grafo en memoria."""
-        self.view.update_status("Analizando Red...", 10)
+        self.view.update_status("Analizando Red...", 0.1)
 
         CAPA_RED = get_config("rutas.capa_red_vial")
         TOLERANCIA = get_config("tolerancias.snap_grafo_vial", 0.1)
@@ -280,7 +286,7 @@ class FiberController:
 
     def _obtener_catalogo_bloques(self) -> List[Dict[str, Any]]:
         """Carga y busca los bloques de equipos configurados."""
-        self.view.update_status("Buscando Equipos...", 30)
+        self.view.update_status("Buscando Equipos...", 0.3)
         dic_equipos = get_config("equipos", {})
         lista_todos = [item for sublist in dic_equipos.values() for item in sublist]
         bloques = extract_specific_blocks(lista_todos)
@@ -292,7 +298,7 @@ class FiberController:
         self, msp: Any, doc: Any, grafo: NetworkGraph, bloques: List[Dict], opts: Dict
     ) -> Tuple[List[Dict[str, Any]], int]:
         """Itera sobre los tramos y calcula la lógica de negocio."""
-        self.view.update_status("Calculando Rutas...", 40)
+        self.view.update_status("Calculando Rutas...", 0.4)
 
         CAPA_TRAMO = get_config("rutas.capa_tramos_logicos")
         tramos = [
@@ -307,7 +313,7 @@ class FiberController:
         exitos = 0
 
         for idx, obj in enumerate(tramos):
-            pct = 40 + int((idx / total) * 50)
+            pct = 0.3 + int((idx / total) * 0.6)  # Progreso entre 30% y 90%
             self.view.update_status(f"Tramo {idx + 1}/{total}", pct)
 
             resultado = self._procesar_un_tramo(msp, doc, obj, grafo, bloques, opts)
@@ -391,6 +397,7 @@ class FiberController:
 
             if garantizar_capa_existente(doc, nombre_capa):
                 obj.Layer = nombre_capa
+                # Configurable: ancho de línea y escala para destacar visualmente
                 obj.ConstantWidth = 0.5
                 obj.LinetypeScale = 4
 
@@ -398,7 +405,7 @@ class FiberController:
             logger.warning(f"No se pudo cambiar capa en {obj.Handle}: {e}")
 
     def _exportar_resultados(self, datos: List[Dict], opts: Dict) -> None:
-        """ "General el archivo CSV con los resultados."""
+        """General el archivo CSV con los resultados."""
         if opts["csv"]:
-            self.view.update_status("Exportando...", 95)
+            self.view.update_status("Exportando...", 0.95)
             exportar_csv(datos)

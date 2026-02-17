@@ -1,13 +1,17 @@
 import sys
 import tkinter as tk
 from tkinter import messagebox
-from optimizer import verificar_entorno
-from optimizer.config_loader import validar_configuracion
-from interface.view import FiberUI
+import customtkinter as ctk
+from optimizer import verificar_entorno, validar_configuracion
 from interface.controller import FiberController
+from interface.view import FiberUI
+
+ctk.set_appearance_mode("Light")
+ctk.set_default_color_theme("blue")
 
 if __name__ == "__main__":
     verificar_entorno()
+
     errores = validar_configuracion()
 
     if errores:
@@ -18,9 +22,10 @@ if __name__ == "__main__":
         root_temp.destroy()
         sys.exit(1)  # Cierra el programa
 
-    root = tk.Tk()
+    app_view = FiberUI()
 
-    view = FiberUI(root)
-    controller = FiberController(view)
+    controller = FiberController(app_view)
 
-    root.mainloop()
+    app_view.set_controller(controller)
+
+    app_view.mainloop()

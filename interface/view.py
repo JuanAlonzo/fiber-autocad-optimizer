@@ -1,393 +1,381 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext, filedialog, messagebox
-from datetime import datetime
+from tkinter import filedialog, messagebox
+import customtkinter as ctk
 import socket
-from typing import TYPE_CHECKING, Optional
-from optimizer import FECHA_EXPIRACION
+from datetime import datetime
+from typing import Optional, TYPE_CHECKING
+
+try:
+    from optimizer import FECHA_EXPIRACION
+except ImportError:
+    FECHA_EXPIRACION = datetime(2026, 12, 31)
 
 if TYPE_CHECKING:
     from .controller import FiberController
 
-# --- PALETA DE COLORES (Basada en la maqueta) ---
-COLOR_BG_MAIN = "#F4F7F6"  # Fondo general gris claro
-COLOR_BG_PANEL = "#FFFFFF"  # Fondo blanco de paneles
-COLOR_HEADER_BG = "#2C3E50"  # Azul oscuro cabecera
-COLOR_HEADER_TXT = "#ECF0F1"  # Texto claro cabecera
-COLOR_ACCENT_GREEN = "#27AE60"  # Verde botón principal
-COLOR_ACCENT_HOVER = "#2ECC71"  # Verde hover
-COLOR_TXT_PRIMARY = "#2C3E50"  # Texto oscuro principal
-COLOR_TXT_SECONDARY = "#7F8C8D"  # Texto gris secundario
-COLOR_BORDER = "#BDC3C7"  # Bordes suaves
+# Configuración global de estilo
+ctk.set_appearance_mode("Light")
+ctk.set_default_color_theme("blue")
 
 
-class FiberUI:
+class FiberUI(ctk.CTk):
     """
-    Interfaz Gráfica Moderna (Tkinter).
-    Diseño basado en maqueta de dos columnas.
+    Interfaz Gráfica con CustomTkinter.
     """
 
-    def __init__(self, root: tk.Tk, controller: Optional["FiberController"] = None):
-        self.root = root
+    def __init__(self, controller: Optional["FiberController"] = None):
+        super().__init__()
+
         self.controller = controller
 
-        self.root.title("Fiber AutoCAD Optimizer v2.5 - Enterprise")
-        self.root.geometry("900x750")
-        self.root.minsize(850, 700)  # Corrección aplicada aquí también
-        self.root.resizable(False, True)
-        self.root.configure(bg=COLOR_BG_MAIN)
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.title("Fiber AutoCAD Optimizer v2.5 - Enterprise")
+        self.geometry("600x850")
+        self.minsize(550, 650)
 
-        # Variables
+        # Colores personalizados
+        self.color_bg_main = "#F0F0F0"
+        self.color_frame_bg = "#D9D9D9"
+        self.color_btn_primary = "#73899E"
+        self.color_btn_hover = "#5A6E80"
+        self.color_text_header = "#2B2B2B"
+
+        self.configure(fg_color=self.color_bg_main)
+
+        # Protocolo de cierre
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        # Variables de Control
         self.var_debug_ruta = tk.BooleanVar(value=True)
         self.var_capas = tk.BooleanVar(value=True)
         self.var_labels = tk.BooleanVar(value=True)
         self.var_errores = tk.BooleanVar(value=True)
         self.var_csv = tk.BooleanVar(value=True)
-        self.var_audit = tk.BooleanVar(value=False)
+        self.var_config_path = tk.StringVar(value="Automatico (config.yaml)")
 
-        self._setup_styles()
-        self._setup_header()
+        # Variables internas de UI
+        self.var_status = tk.StringVar(value="Sistema listo...")
 
         # Layout Principal
-        self.content_frame = ttk.Frame(root, style="Main.TFrame")
-        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Configuración
+        self.grid_rowconfigure(1, weight=1)  # Cuerpo Principal
+        self.grid_rowconfigure(2, weight=0)  # Footer
 
-        self.content_frame.columnconfigure(0, weight=4, uniform="cols")
-        self.content_frame.columnconfigure(1, weight=6, uniform="cols")
-        self.content_frame.rowconfigure(0, weight=1)
-
-        self._setup_left_column(self.content_frame)
-        self._setup_right_column(self.content_frame)
+        # Construcción de la Interfaz
+        self._setup_config_section()
+        self._setup_main_body()
         self._setup_footer()
 
     def set_controller(self, controller: "FiberController"):
         self.controller = controller
 
-    def _setup_styles(self):
-        style = ttk.Style()
-        style.theme_use("clam")
+    # CONSTRUCCIÓN DE LA UI
+    # ----------------------
 
-        style.configure("TFrame", background=COLOR_BG_MAIN)
-        style.configure(
-            "TLabel",
-            background=COLOR_BG_MAIN,
-            foreground=COLOR_TXT_PRIMARY,
-            font=("Segoe UI", 10),
-        )
-        style.configure("TButton", font=("Segoe UI", 10))
-        style.configure(
-            "TCheckbutton",
-            background=COLOR_BG_PANEL,
-            font=("Segoe UI", 10),
-            focuscolor=COLOR_BG_PANEL,
-        )
-        style.configure("Panel.TFrame", background=COLOR_BG_PANEL, relief="flat")
-        style.configure("Main.TFrame", background=COLOR_BG_MAIN)
+    def _setup_config_section(self):
+        """Panel superior para cargar configuración."""
+        frame = ctk.CTkFrame(self, fg_color=self.color_frame_bg, corner_radius=15)
+        frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
 
-        style.configure(
-            "HeaderTitle.TLabel",
-            background=COLOR_HEADER_BG,
-            foreground=COLOR_HEADER_TXT,
-            font=("Segoe UI", 16, "bold"),
-        )
-        style.configure(
-            "HeaderSub.TLabel",
-            background=COLOR_HEADER_BG,
-            foreground="#BDC3C7",
-            font=("Segoe UI", 10),
-        )
-        style.configure(
-            "PanelTitle.TLabel",
-            background=COLOR_BG_PANEL,
-            foreground=COLOR_TXT_PRIMARY,
-            font=("Segoe UI", 11, "bold"),
-        )
-        style.configure(
-            "PanelSub.TLabel",
-            background=COLOR_BG_PANEL,
-            foreground=COLOR_TXT_SECONDARY,
-            font=("Segoe UI", 9),
-        )
-        style.configure(
-            "Status.TLabel",
-            background=COLOR_BG_MAIN,
-            foreground=COLOR_TXT_SECONDARY,
-            font=("Segoe UI", 9),
-        )
+        frame.grid_columnconfigure(0, weight=1)
 
-        style.configure(
-            "Accent.TButton",
-            font=("Segoe UI", 12, "bold"),
-            background=COLOR_ACCENT_GREEN,
-            foreground="white",
-            borderwidth=0,
-            focuscolor=COLOR_ACCENT_GREEN,
+        # Título
+        ctk.CTkLabel(
+            frame,
+            text="Configuracion",
+            font=("Roboto", 12, "bold"),
+            text_color=self.color_text_header,
+        ).grid(row=0, column=0, sticky="w", padx=15, pady=(10, 0))
+
+        # Entry (Solo lectura visual)
+        entry = ctk.CTkEntry(
+            frame,
+            textvariable=self.var_config_path,
+            height=35,
+            corner_radius=8,
+            border_width=0,
+            fg_color="white",
+            state="disabled",
         )
-        style.map(
-            "Accent.TButton",
-            background=[("active", COLOR_ACCENT_HOVER), ("disabled", "#95A5A6")],
+        entry.grid(row=1, column=0, padx=15, pady=(5, 15), sticky="ew")
+
+        # Botón Cargar
+        btn = ctk.CTkButton(
+            frame,
+            text="Cargar config",
+            width=120,
+            height=35,
+            fg_color=self.color_btn_primary,
+            hover_color=self.color_btn_hover,
+            corner_radius=8,
+            font=("Roboto", 13, "bold"),
+            command=self._on_click_cargar_config,
         )
+        btn.grid(row=1, column=1, padx=(0, 15), pady=(5, 15))
 
-        style.configure("Tool.TButton", font=("Segoe UI", 9), padding=10)
+    def _setup_main_body(self):
+        """Contenedor central: Opciones/Log a la izquierda, Herramientas a la derecha."""
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=5)
 
-    def _setup_header(self):
-        header_frame = tk.Frame(self.root, bg=COLOR_HEADER_BG, height=80, padx=20)
-        header_frame.pack(fill=tk.X, side=tk.TOP)
-        header_frame.pack_propagate(False)
+        main_frame.grid_columnconfigure(0, weight=1)  # Columna Izquierda (Expandible)
+        main_frame.grid_columnconfigure(1, weight=0)  # Columna Derecha (Fija)
+        main_frame.grid_rowconfigure(0, weight=1)  # Expansión vertical
 
-        lbl_icon = tk.Label(
-            header_frame,
-            text="⚡",
-            font=("Segoe UI", 28),
-            bg=COLOR_HEADER_BG,
-            fg=COLOR_ACCENT_GREEN,
+        #  COLUMNA IZQUIERDA
+        left_col = ctk.CTkFrame(main_frame, fg_color="transparent")
+        left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        left_col.grid_columnconfigure(0, weight=1)
+        left_col.grid_rowconfigure(1, weight=1)  # El log se lleva el espacio extra
+
+        # Opciones
+        f_opts = ctk.CTkFrame(left_col, fg_color=self.color_frame_bg, corner_radius=15)
+        f_opts.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+
+        ctk.CTkLabel(
+            f_opts,
+            text="Opciones de Procesamiento",
+            font=("Roboto", 12, "bold"),
+            text_color=self.color_text_header,
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+
+        self._add_checkbox(f_opts, "Dibujar ruta (Magenta)", self.var_debug_ruta)
+        self._add_checkbox(f_opts, "Cambiar Capa (Default)", self.var_capas)
+        self._add_checkbox(f_opts, "Etiquetas inteligentes", self.var_labels)
+        self._add_checkbox(f_opts, "Errores topologicos", self.var_errores)
+        self._add_checkbox(f_opts, "Reporte CSV", self.var_csv)
+        ctk.CTkLabel(f_opts, text="", height=5).pack()
+
+        # Logs de Ejecución
+        f_log = ctk.CTkFrame(left_col, fg_color=self.color_frame_bg, corner_radius=15)
+        f_log.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+
+        h_log = ctk.CTkFrame(f_log, fg_color="transparent")
+        h_log.pack(fill="x", padx=15, pady=(10, 5))
+        ctk.CTkLabel(
+            h_log,
+            text="Registro de ejecucion",
+            font=("Roboto", 13, "bold"),
+            text_color=self.color_text_header,
+        ).pack(side="left")
+        ctk.CTkButton(
+            h_log,
+            text="Limpiar",
+            width=60,
+            height=20,
+            fg_color=self.color_btn_primary,
+            font=("Roboto", 10),
+            command=self._clear_logs,
+        ).pack(side="right")
+
+        self.txt_log = ctk.CTkTextbox(
+            f_log,
+            corner_radius=8,
+            fg_color="#F9F9F9",
+            text_color="black",
+            font=("Consolas", 11),
         )
-        lbl_icon.pack(side=tk.LEFT)
+        self.txt_log.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        self.txt_log.insert("0.0", "Esperando inicio del proceso...\n")
 
-        title_frame = tk.Frame(header_frame, bg=COLOR_HEADER_BG)
-        title_frame.pack(side=tk.LEFT, padx=15, pady=15)
-        ttk.Label(
-            title_frame,
-            text="Optimizador de Redes de Fibra",
-            style="HeaderTitle.TLabel",
-        ).pack(anchor="w")
+        # Zona de Acción
+        f_action = ctk.CTkFrame(left_col, fg_color="transparent")
+        f_action.grid(row=2, column=0, sticky="ew")
+        f_action.grid_columnconfigure(0, weight=1)
+
+        self.btn_run = ctk.CTkButton(
+            f_action,
+            text="Iniciar Proceso",
+            height=45,
+            fg_color=self.color_btn_primary,
+            hover_color=self.color_btn_hover,
+            corner_radius=10,
+            font=("Roboto", 16, "bold"),
+            command=self._on_click_iniciar,
+        )
+        self.btn_run.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+
+        # BARRA DE PROGRESO
+        self.progress = ctk.CTkProgressBar(f_action, height=12, corner_radius=5)
+        self.progress.set(0)
+        self.progress.configure(progress_color="#2E5C85")
+        self.progress.grid(row=1, column=0, sticky="ew", pady=(0, 5))
+
+        lbl_st = ctk.CTkLabel(
+            f_action,
+            textvariable=self.var_status,
+            font=("Roboto", 11, "italic"),
+            text_color="#555",
+        )
+        lbl_st.grid(row=2, column=0, pady=(0, 0))
+
+        #  COLUMNA DERECHA (HERRAMIENTAS)
+        right_col = ctk.CTkFrame(
+            main_frame, fg_color=self.color_frame_bg, corner_radius=15, width=200
+        )
+        right_col.grid(row=0, column=1, rowspan=3, sticky="ns")
+        right_col.grid_propagate(False)
+
+        ctk.CTkLabel(
+            right_col,
+            text="Diagnostico",
+            font=("Roboto", 12, "bold"),
+            text_color=self.color_text_header,
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        ctk.CTkLabel(
+            right_col,
+            text="Herramientas para\ndepurar en el dibujo.",
+            font=("Roboto", 11),
+            text_color="#555",
+            justify="left",
+        ).pack(anchor="w", padx=15, pady=(0, 15))
+
+        self._add_tool_btn(right_col, "Visualizar Grafo", "grafo")
+        self._add_tool_btn(right_col, "Asociar Hubs", "asociar_hubs")
+        self._add_tool_btn(right_col, "Analizar FATs", "analizar_fat")
+        self._add_tool_btn(right_col, "Inventario Bloques", "inventario")
+        self._add_tool_btn(right_col, "Visualizar Extremos", "extremos")
+
+        ctk.CTkButton(
+            right_col,
+            text="DISABLED",
+            height=35,
+            fg_color="#9AA5B1",
+            state="disabled",
+            corner_radius=8,
+        ).pack(fill="x", padx=15, pady=8)
+
+    def _setup_footer(self):
+        frame = ctk.CTkFrame(self, fg_color="transparent")
+        frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 10))
 
         pc_name = socket.gethostname()
         try:
             dias = (FECHA_EXPIRACION - datetime.now()).days
         except Exception:
             dias = 0
-        ttk.Label(
-            title_frame,
-            text=f"Estación: {pc_name} | Licencia PRO ({dias} días)",
-            style="HeaderSub.TLabel",
-        ).pack(anchor="w")
 
-        status_frame = tk.Frame(header_frame, bg=COLOR_HEADER_BG)
-        status_frame.pack(side=tk.RIGHT, pady=20)
-        tk.Label(
-            status_frame,
-            text="●",
-            fg=COLOR_ACCENT_GREEN,
-            bg=COLOR_HEADER_BG,
-            font=("Segoe UI", 14),
-        ).pack(side=tk.LEFT)
-        ttk.Label(
-            status_frame, text=" Sistema Conectado", style="HeaderSub.TLabel"
-        ).pack(side=tk.LEFT)
-
-    def _setup_left_column(self, parent):
-        left_frame = ttk.Frame(parent, style="Main.TFrame")
-        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-
-        p_config = self._create_panel(left_frame, "CONFIGURACIÓN", "📂")
-        self.lbl_config_path = ttk.Label(
-            p_config,
-            text="config.yaml (Por defecto)",
-            style="PanelSub.TLabel",
-            wraplength=250,
+        lbl_lic = ctk.CTkLabel(
+            frame,
+            text=f"Licencia: ACTIVADA | Expira en {dias} dias",
+            font=("Roboto", 11),
+            text_color="green",
         )
-        self.lbl_config_path.pack(fill=tk.X, pady=(0, 10))
-        ttk.Button(
-            p_config,
-            text="Seleccionar Archivo...",
-            command=lambda: self.controller.cargar_config(),
-        ).pack(fill=tk.X)
+        lbl_lic.pack(side="right", padx=(0, 10))
 
-        p_options = self._create_panel(left_frame, "OPCIONES DE PROCESAMIENTO", "⚙️")
-        opts_container = ttk.Frame(p_options, style="Panel.TFrame")
-        opts_container.pack(fill=tk.BOTH, expand=True)
-
-        self._add_checkbox(
-            opts_container, "Dibujar ruta (Magenta)", self.var_debug_ruta, "〰️"
+        lbl_pc = ctk.CTkLabel(
+            frame,
+            text=f"PC:{pc_name}",
+            font=("Roboto", 12, "bold"),
+            text_color="#2E5C85",
         )
-        self._add_checkbox(
-            opts_container, "Cambiar capas (Normalizar)", self.var_capas, "📚"
+        lbl_pc.pack(side="right", padx=(0, 5))
+
+    # MÉTODOS AUXILIARES Y CONEXIONES
+    # --------------------------------
+
+    def _add_checkbox(self, parent, text, variable):
+        cb = ctk.CTkCheckBox(
+            parent,
+            text=text,
+            variable=variable,
+            checkbox_height=20,
+            checkbox_width=20,
+            corner_radius=5,
+            fg_color=self.color_btn_primary,
+            hover_color=self.color_btn_hover,
+            font=("Roboto", 12),
         )
-        self._add_checkbox(
-            opts_container, "Insertar etiquetas inteligentes", self.var_labels, "🏷️"
+        cb.pack(anchor="w", padx=15, pady=5)
+
+    def _add_tool_btn(self, parent, text, tool_key):
+        btn = ctk.CTkButton(
+            parent,
+            text=text,
+            height=35,
+            fg_color=self.color_btn_primary,
+            hover_color=self.color_btn_hover,
+            corner_radius=8,
+            font=("Roboto", 12, "bold"),
+            command=lambda: self._ejecutar_herramienta(tool_key),
         )
-        self._add_checkbox(
-            opts_container, "Marcar errores topológicos", self.var_errores, "⭕"
-        )
-        self._add_checkbox(opts_container, "Generar reporte CSV", self.var_csv, "📊")
+        btn.pack(fill="x", padx=15, pady=8)
 
-    def _setup_right_column(self, parent):
-        right_frame = ttk.Frame(parent, style="Main.TFrame")
-        right_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+    def _on_click_cargar_config(self):
+        if self.controller:
+            self.controller.cargar_config()
+        else:
+            self.log_message("Controlador desconectado.", "ERROR")
 
-        p_tools = self._create_panel(right_frame, "HERRAMIENTAS DE DIAGNÓSTICO", "🛠️")
+    def _on_click_iniciar(self):
+        if self.controller:
+            self.controller.iniciar_proceso_principal()
+        else:
+            self.log_message("Controlador desconectado.", "ERROR")
 
-        tools_grid = ttk.Frame(p_tools, style="Panel.TFrame")
-        tools_grid.pack(fill=tk.BOTH, expand=True)
-        tools_grid.columnconfigure((0, 1), weight=1)
+    def _ejecutar_herramienta(self, tool_name):
+        if self.controller:
+            self.controller.ejecutar_herramienta(tool_name)
+        else:
+            self.log_message(f"Controlador desconectado ({tool_name}).", "ERROR")
 
-        # --- CORRECCIÓN AQUÍ: Separamos estilo de grid ---
-        # Opciones para el .grid() (posicionamiento)
-        grid_opts = {"sticky": "ew", "padx": 5, "pady": 5}
-        # Estilo para el constructor (visual)
-        btn_style = "Tool.TButton"
+    def _clear_logs(self):
+        self.txt_log.configure(state="normal")
+        self.txt_log.delete("0.0", "end")
+        self.txt_log.configure(state="disabled")
+        self.log_message("--- Logs Limpiados ---")
 
-        # Fila 0
-        self.btn_debug_graph = ttk.Button(
-            tools_grid,
-            text="🕸️ Visualizar Grafo Vial",
-            style=btn_style,
-            command=lambda: self.controller.ejecutar_herramienta("grafo"),
-        )
-        self.btn_debug_graph.grid(row=0, column=0, **grid_opts)
+    #  API PÚBLICA PARA EL CONTROLADOR
 
-        self.btn_vis_extr = ttk.Button(
-            tools_grid,
-            text="↔️ Visualizar Extremos",
-            style=btn_style,
-            command=lambda: self.controller.ejecutar_herramienta("extremos"),
-        )
-        self.btn_vis_extr.grid(row=0, column=1, **grid_opts)
+    def ask_file(self):
+        return filedialog.askopenfilename(filetypes=[("YAML Config", "*.yaml")])
 
-        # Fila 1
-        self.btn_list_blocks = ttk.Button(
-            tools_grid,
-            text="📋 Inventario Bloques",
-            style=btn_style,
-            command=lambda: self.controller.ejecutar_herramienta("inventario"),
-        )
-        self.btn_list_blocks.grid(row=1, column=0, **grid_opts)
-
-        self.btn_analizar_fat = ttk.Button(
-            tools_grid,
-            text="🔎 Analizar FATs",
-            style=btn_style,
-            command=lambda: self.controller.ejecutar_herramienta("analizar_fat"),
-        )
-        self.btn_analizar_fat.grid(row=1, column=1, **grid_opts)
-
-        # Fila 2
-        self.btn_asociar_hubs = ttk.Button(
-            tools_grid,
-            text="🔗 Asociar Hubs <-> Texto",
-            style=btn_style,
-            command=lambda: self.controller.ejecutar_herramienta("asociar_hubs"),
-        )
-        self.btn_asociar_hubs.grid(row=2, column=0, columnspan=2, **grid_opts)
-
-        # --- LOGS ---
-        p_logs_container = ttk.Frame(right_frame, style="Panel.TFrame", padding=1)
-        p_logs_container.pack(fill=tk.BOTH, expand=True, pady=(20, 0))
-
-        p_logs = ttk.Frame(p_logs_container, style="Panel.TFrame", padding=15)
-        p_logs.pack(fill=tk.BOTH, expand=True)
-
-        log_header = ttk.Frame(p_logs, style="Panel.TFrame")
-        log_header.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(
-            log_header, text="📜 REGISTRO DE EJECUCIÓN", style="PanelTitle.TLabel"
-        ).pack(side=tk.LEFT)
-
-        btn_clear = ttk.Button(
-            log_header, text="🗑️ Limpiar", style="Tool.TButton", command=self._clear_logs
-        )
-        btn_clear.pack(side=tk.RIGHT)
-
-        self.txt_log = scrolledtext.ScrolledText(
-            p_logs,
-            state="disabled",
-            height=10,
-            font=("Consolas", 9),
-            bg=COLOR_BG_MAIN,
-            relief="flat",
-            padx=5,
-            pady=5,
-        )
-        self.txt_log.pack(fill=tk.BOTH, expand=True)
-        self._setup_log_tags()
-
-    def _setup_footer(self):
-        footer_frame = tk.Frame(
-            self.root, bg=COLOR_BG_MAIN, height=100, padx=20, pady=10
-        )
-        footer_frame.pack(fill=tk.X, side=tk.BOTTOM)
-        footer_frame.pack_propagate(False)
-
-        self.btn_run = ttk.Button(
-            footer_frame,
-            text="🚀 EJECUTAR OPTIMIZACIÓN",
-            style="Accent.TButton",
-            command=lambda: self.controller.iniciar_proceso_principal(),
-        )
-        self.btn_run.pack(fill=tk.X, ipady=10, pady=(0, 10))
-
-        self.progress = ttk.Progressbar(footer_frame, mode="determinate")
-        self.progress.pack(fill=tk.X, pady=(0, 5))
-
-        self.lbl_status = ttk.Label(
-            footer_frame,
-            text="Sistema listo. Esperando órdenes.",
-            style="Status.TLabel",
-            anchor="center",
-        )
-        self.lbl_status.pack(fill=tk.X)
-
-    # --- UTILIDADES VISUALES ---
-    def _create_panel(self, parent, title, icon=""):
-        outer = ttk.Frame(parent, style="Panel.TFrame", padding=1)
-        outer.pack(fill=tk.BOTH, expand=False, pady=(0, 20))
-        inner = ttk.Frame(outer, style="Panel.TFrame", padding=15)
-        inner.pack(fill=tk.BOTH, expand=True)
-        title_txt = f"{icon} {title}" if icon else title
-        ttk.Label(inner, text=title_txt, style="PanelTitle.TLabel").pack(
-            anchor="w", pady=(0, 15)
-        )
-        return inner
-
-    def _add_checkbox(self, parent, text, variable, icon=""):
-        frame = ttk.Frame(parent, style="Panel.TFrame")
-        frame.pack(fill=tk.X, pady=5)
-        if icon:
-            ttk.Label(frame, text=icon, style="PanelSub.TLabel").pack(
-                side=tk.LEFT, padx=(0, 5)
-            )
-        ttk.Checkbutton(frame, text=text, variable=variable, style="TCheckbutton").pack(
-            side=tk.LEFT, fill=tk.X, expand=True
-        )
-
-    def _setup_log_tags(self):
-        self.txt_log.tag_config("INFO", foreground=COLOR_TXT_PRIMARY)
-        self.txt_log.tag_config("WARNING", foreground="#D35400")
-        self.txt_log.tag_config(
-            "ERROR", foreground="#C0392B", font=("Consolas", 9, "bold")
-        )
-        self.txt_log.tag_config(
-            "CRITICAL",
-            foreground="white",
-            background="#C0392B",
-            font=("Consolas", 9, "bold"),
-        )
-
-    def update_status(self, text, progress=None):
-        def _update():
-            self.lbl_status.config(text=text)
-            if progress is not None:
-                self.progress["value"] = progress
-
-        self.root.after(0, _update)
+    def update_config_label(self, text):
+        self.var_config_path.set(text)
 
     def log_message(self, msg, level_name="INFO"):
+        prefix = (
+            "❌ "
+            if level_name == "ERROR"
+            else "⚠️ "
+            if level_name == "WARNING"
+            else "ℹ️ "
+        )
+        full_msg = f"{prefix}{msg}\n"
+
         def _append():
             self.txt_log.configure(state="normal")
-            self.txt_log.insert(tk.END, msg + "\n", level_name)
+            self.txt_log.insert("end", full_msg)
+            self.txt_log.see("end")
             self.txt_log.configure(state="disabled")
-            self.txt_log.yview(tk.END)
 
-        self.root.after(0, _append)
+        self.after(0, _append)
+
+    def update_status(self, text, progress=None):
+        """
+        Actualiza el texto de estado y la barra de progreso.
+        Acepta progress en rango 0-100 (int) o 0.0-1.0 (float).
+        """
+
+        def _update():
+            self.var_status.set(text)
+            if progress is not None:
+                # CustomTkinter usa 0.0 a 1.0
+                val = float(progress)
+                if val > 1.0:
+                    val = val / 100.0
+                self.progress.set(val)
+
+        self.after(0, _update)
 
     def toggle_run_button(self, state):
         st = "normal" if state else "disabled"
-        style = "Accent.TButton" if state else "TButton"
-        self.root.after(0, lambda: self.btn_run.config(state=st, style=style))
+        color = self.color_btn_primary if state else "#9AA5B1"
 
-    def update_config_label(self, text):
-        self.lbl_config_path.config(text=text, foreground=COLOR_TXT_PRIMARY)
+        def _update():
+            self.btn_run.configure(state=st, fg_color=color)
+
+        self.after(0, _update)
 
     def show_info(self, title, msg):
         messagebox.showinfo(title, msg)
@@ -395,26 +383,18 @@ class FiberUI:
     def show_error(self, title, msg):
         messagebox.showerror(title, msg)
 
-    def ask_file(self):
-        return filedialog.askopenfilename(filetypes=[("YAML Config", "*.yaml")])
-
-    def _clear_logs(self):
-        self.txt_log.config(state="normal")
-        self.txt_log.delete("1.0", tk.END)
-        self.txt_log.config(state="disabled")
-        self.log_message("--- Logs Limpiados ---", "INFO")
-
     def on_close(self):
-        """
-        Método ejecutado al intentar cerrar la ventana.
-        Guarda preferencias y destruye la interfaz.
-        """
         if self.controller:
             try:
-                # Llamamos al controlador para que guarde el JSON
                 self.controller.guardar_preferencias()
-            except Exception as e:
-                print(f"Error guardando preferencias: {e}")
+            except Exception:
+                pass
+        self.destroy()
 
-        # Cierra la aplicación definitivamente
-        self.root.destroy()
+
+if __name__ == "__main__":
+    app = FiberUI()
+    app.log_message("Modo prueba UI iniciado.")
+    # Prueba de la barra de progreso
+    app.update_status("Probando barra...", 50)
+    app.mainloop()

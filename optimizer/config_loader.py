@@ -107,12 +107,17 @@ def validar_configuracion() -> list[str]:
     claves_criticas = [
         "rutas.capa_red_vial",
         "rutas.capa_tramos_logicos",
+        "rutas.capa_textos_hubs",
+        "tolerancias.snap_grafo_vial",
+        "tolerancias.radio_busqueda_acceso",
+        "tolerancias.radio_snap_equipos",
+        "capas_resultado.prefijo_capa",
         "equipos.xbox",
         "equipos.hbox",
         "equipos.fat_int",
         "equipos.fat_final",
-        "capas_resultado.prefijo_capa",
         "catalogo_cables",
+        "reglas_topologia",
     ]
 
     for clave in claves_criticas:

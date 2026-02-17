@@ -12,7 +12,7 @@ from .acad_geometry import NetworkGraph
 from .acad_interface import get_acad_com
 from .acad_labeler import insertar_etiqueta_reserva, insertar_etiqueta_tramo
 from .cable_rules import seleccionar_cable
-from .config_loader import get_config, load_config
+from .config_loader import get_config, load_config, validar_configuracion
 from .constants import ASI, SysLayers, Geometry
 from .feedback_logger import logger
 from .report_generator import exportar_csv
@@ -33,6 +33,7 @@ __all__ = [
     seleccionar_cable,
     get_config,
     load_config,
+    validar_configuracion,
     get_acad_com,
     logger,
     dibujar_debug_offset,
