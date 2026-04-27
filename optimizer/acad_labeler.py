@@ -73,12 +73,12 @@ def insertar_etiqueta_reserva(
 ) -> None:
     """
     Inserta un texto pequeño con la reserva cerca del equipo destino.
-    Ejemplo: "Reserva:15m"
+    Ejemplo: "RZ=15m"
     """
     if reserva <= 0:
         return
 
-    texto = f"Reserva:{int(reserva)}m"
+    texto = f"RZ={int(reserva)}m"
 
     # Offset fijo para que no caiga encima del bloque (ajustable)
     desplazamiento_x = 2.0
